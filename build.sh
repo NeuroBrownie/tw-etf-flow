@@ -27,6 +27,8 @@ for s in twse_quotes twse_insti; do python3 "$DB/scripts/fetch.py" $s --root "$D
 for s in tpex_quotes tpex_insti; do python3 "$DB/scripts/fetch.py" $s --root "$DB" --start "$START" --end "$END" --pause 2; done
 python3 fetch_margin.py twse_margin --root "$DB" --start "$START" --end "$END" --pause 3
 python3 fetch_margin.py tpex_margin --root "$DB" --start "$START" --end "$END" --pause 2
+python3 fetch_margin.py twse_bfi82u --root "$DB" --start "$START" --end "$END" --pause 3
+python3 fetch_margin.py tpex_insti_sum --root "$DB" --start "$START" --end "$END" --pause 2
 
 # 2) data + page (unencrypted copies stay in build/; never pushed)
 python3 build_data.py --root "$DB" --themes themes.json --out build/data.json

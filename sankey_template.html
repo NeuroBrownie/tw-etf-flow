@@ -158,12 +158,12 @@ function draw() {
   // KPIs (all ETFs, independent of filters, like the screenshot's top row)
   const M = P.market;
   const kp = [['交易日數', null, S.per + ' 日'], ['全市場 成交值' + infoBtn('上市＋上櫃的成交金額加總（交易所公布的數字），包含 ETF、ETN、存託憑證和受益證券，不含權證。新聞常說的「大盤成交值」通常只算上市，所以會比這裡小。'), null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
-              ['全市場 外資淨買賣', M.f], ['全市場 投信淨買賣', M.t], ['全市場 自營淨買賣' + infoBtn('自營商＝證券公司用自己的帳戶買賣，包含兩種：「自行買賣」是自己判斷的進出；「避險」是為了發行權證、幫 ETF 造市或處理申購買回而做的對沖。避險通常占大部分，不代表看多或看空。ETF 的部分在「表格」分頁有把兩者拆開。金額以每檔當天均價估算（≈）。'), M.d], ['全市場 融資增減', M.m]];
+              ['全市場 外資淨買賣', M.f], ['全市場 投信淨買賣', M.t], ['全市場 自營淨買賣' + infoBtn('自營商＝證券公司用自己的帳戶買賣，包含兩種：「自行買賣」是自己判斷的進出；「避險」是為了發行權證、幫 ETF 造市或處理申購買回而做的對沖。避險通常占大部分，不代表看多或看空。ETF 的部分在「表格」分頁有把兩者拆開。這裡的數字是交易所公布的官方金額（上市＋上櫃，含權證）。'), M.d], ['全市場 融資增減', M.m]];
   document.getElementById('kpis').innerHTML = kp.map(([l, v, s]) => {
-    const txt = s !== undefined ? s : v === null ? '—' : (Math.abs(yi(v)) >= 10 ? f1(yi(v), true).replace(/\.\d$/, '') : f1(yi(v), true)) + ' 億';
+    const txt = s !== undefined ? s : v === null ? '—' : (Math.abs(yi(v)) >= 10 ? (v > 0 ? '+' : '') + Math.round(yi(v)).toLocaleString('zh-TW') : f1(yi(v), true)) + ' 億';
     const cls = v === null || s !== undefined ? '' : v > 0 ? 'up' : 'down';
     return `<div class="kpi"><div class="l">${l}</div><div class="v ${cls}">${txt}</div></div>`; }).join('');
-  document.getElementById('note').textContent = '上列為全市場合計（上市＋上櫃，含 ETF／存託憑證／受益證券，不含權證），不隨選項改變；以均價估算（≈），與官方金額約差 1% 內。自營含避險。';
+  document.getElementById('note').textContent = '上列為全市場合計（上市＋上櫃），不隨選項改變。外資、投信、自營是交易所公布的官方買賣超金額（含權證，自營含避險）；成交值是交易所公布的成交金額（不含權證）；融資以每檔當天均價估算（≈）。下方流向圖不含權證，金額以均價估算（≈），所以加總會和上列略有不同。';
 
   // edges
   const out = {}, inn = {}, L = [], R = [];

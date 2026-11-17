@@ -2,7 +2,8 @@
 
   python3 fetch_margin.py SOURCE --root ~/tw-market-data --start YYYY-MM-DD --end YYYY-MM-DD [--pause 3]
 
-SOURCE: twse_margin (MI_MARGN, all securities) or tpex_margin (上櫃融資融券餘額).
+SOURCE: twse_margin (MI_MARGN, all securities), tpex_margin (上櫃融資融券餘額),
+        twse_bfi82u (上市 三大法人買賣金額統計表, official NT$ totals), tpex_insti_sum (上櫃 三大法人買賣金額彙總表).
 Same conventions as tw-market-data/scripts/fetch.py: raw bytes gzipped to raw/SOURCE/YYYY/YYYYMMDD.json.gz,
 one log line per request in raw/SOURCE/fetch_log.csv, days on disk skipped, stop at once if TWSE blocks.
 Only stores a "no data" file for days that are already in the past by 2+ days, so a report fetched
@@ -14,6 +15,8 @@ UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/
 URL = {
     "twse_margin": "https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date={ymd}&selectType=ALL&response=json",
     "tpex_margin": "https://www.tpex.org.tw/www/zh-tw/margin/balance?date={slash}&response=json",
+    "twse_bfi82u": "https://www.twse.com.tw/rwd/zh/fund/BFI82U?type=day&dayDate={ymd}&response=json",
+    "tpex_insti_sum": "https://www.tpex.org.tw/www/zh-tw/insti/summary?type=Daily&date={slash}&response=json",
 }
 
 def classify(source, body):
@@ -22,6 +25,9 @@ def classify(source, body):
     except Exception: return "bad"
     if source == "twse_margin":
         if d.get("stat") == "OK" and len(d.get("tables") or []) > 1 and d["tables"][1].get("data"): return "ok"
+        return "nodata" if "沒有符合條件" in str(d.get("stat")) or d.get("stat") == "OK" else "bad"
+    if source == "twse_bfi82u":
+        if d.get("stat") == "OK" and d.get("data"): return "ok"
         return "nodata" if "沒有符合條件" in str(d.get("stat")) or d.get("stat") == "OK" else "bad"
     t = (d.get("tables") or [{}])[0]
     return "ok" if t.get("data") else "nodata"

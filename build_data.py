@@ -79,6 +79,22 @@ def margin_rows(root, ymd):
         if prev is not None and now is not None: out[r[0].strip()] = (now - prev) * 1000
     return out
 
+def official_totals(root, ymd):
+    """Exchange-published NT$ net totals for one day, main board (BFI82U) + OTC (三大法人買賣金額彙總表).
+    Includes warrants. -> dict(f, t, d) or None if either file is missing or empty."""
+    tw, tp = load(root, "twse_bfi82u", ymd), load(root, "tpex_insti_sum", ymd)
+    if not tw or tw.get("stat") != "OK" or not tw.get("data") or not tp: return None
+    t = (tp.get("tables") or [{}])[0]
+    if not t.get("data"): return None
+    a = {r[0].strip(): num(r[3]) for r in tw["data"]}
+    b = {r[0].strip(): num(r[3]) for r in t["data"]}
+    try:
+        return dict(f=a["外資及陸資(不含外資自營商)"] + a["外資自營商"] + b["外資及陸資合計"],
+                    t=a["投信"] + b["投信"],
+                    d=a["自營商(自行買賣)"] + a["自營商(避險)"] + b["自營商合計"])
+    except (KeyError, TypeError):
+        return None
+
 def day_rows(root, ymd):
     """-> ({code: dict(market, name, f, t, do, dh, m, vol, val, close)} for every security, market totals) for one day."""
     out, allpx, mkt = {}, {}, dict(val=0.0, f=0.0, t=0.0, d=0.0, m=0.0)
@@ -222,7 +238,11 @@ def main():
             if not any(v) and val == 0: continue
             allrows.append([c] + v + [round(val / 1e4)])
         mk = mkt_day[-n:]
-        market = {k: sum(x[k] for x in mk) for k in ("val", "f", "t", "d")}
+        # 外資/投信/自營 cards use the exchanges' official totals; our average-price estimate is kept as est_* for checking
+        market = {"val": sum(x["val"] for x in mk)}
+        for k in ("f", "t", "d"): market["est_" + k] = sum(x[k] for x in mk)
+        offs = [official_totals(root, ymd) for ymd in days[-n:]]
+        for k in ("f", "t", "d"): market[k] = None if any(o is None for o in offs) else sum(o[k] for o in offs)
         market["m"] = None if any(x["m"] is None for x in mk) else sum(x["m"] for x in mk)
         periods[str(n)] = dict(start=days[-n], end=days[-1], rows=rows, market=market, all=allrows)
 
