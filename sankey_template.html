@@ -118,7 +118,7 @@ document.addEventListener('click', e => { const b = e.target.closest && e.target
   document.querySelectorAll('.info.open').forEach(x => { if (x !== b) x.classList.remove('open'); });
   if (b) { b.classList.toggle('open'); placePop(b); e.stopPropagation(); } }, true);
 
-const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b981'], do:['自營（自行）','#10b981'], dh:['自營（避險）','#8b939e'], m:['融資','#eab308']};
+const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b981'], do:['自營（自行）','#10b981'], dh:['自營（避險）','#a78bfa'], m:['融資','#eab308']};
 const DEF = {
   f:'外國投資機構（含陸資、外資券商自己的帳戶）在台股的買賣。',
   t:'國內投信公司操作的基金（共同基金、ETF 等）的買賣。',
