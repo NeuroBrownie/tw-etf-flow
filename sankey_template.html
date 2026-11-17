@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>台股 ETF 資金流向圖</title>
+<style>
+:root{--bg:#111418;--card:#1a1e24;--line:#2a3038;--text:#e6e8eb;--mute:#8b939e;--up:#f0525a;--down:#4c8dff;--accent:#4c8dff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+.wrap{max-width:none;margin:0 auto;padding:10px 16px 30px}
+.bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:14px}
+.bar .lab{color:var(--mute);font-size:13px}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--mute);padding:7px 13px;font:inherit;cursor:pointer}
+.seg button.on{background:#2b323c;color:#fff;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:6px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.kpi .l{color:var(--mute);font-size:12px}.kpi .v{font-size:21px;font-weight:700;margin-top:2px}
+.note{color:var(--mute);font-size:12.5px;margin:6px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.card h2{font-size:18px;margin:0 0 4px}
+.cols{display:grid;grid-template-columns:38% 24% 38%;color:var(--mute);font-size:13px;text-align:center;margin:14px 0 4px}
+svg text{fill:var(--text);font-size:12px}
+svg .v{fill:var(--mute)}
+svg .mid{font-weight:700;font-size:13px}
+.lk{mix-blend-mode:screen}
+.lk:hover{opacity:.95!important}
+#tip{position:fixed;pointer-events:none;background:#000c;color:#fff;padding:6px 9px;border-radius:6px;font-size:12px;display:none;z-index:9}
+.up{color:var(--up)}.down{color:var(--down)}
+.foot{color:var(--mute);font-size:12.5px;margin-top:14px}
+.foot li{margin:3px 0}
+.backbtn{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer;white-space:nowrap}
+svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <span class="lab">期間</span><div class="seg" id="per"></div>
+    <span class="lab">視角</span><div class="seg" id="view"></div>
+    <span class="lab">誰在搬</span><div class="seg" id="who"></div>
+    <span class="lab">自營</span><div class="seg" id="dmode"></div>
+    <span class="lab">顯示</span><div class="seg" id="topn"></div>
+    <span class="lab">流向圖排序</span><div class="seg" id="order"></div>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <div class="note" id="note"></div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+      <h2 id="title"></h2><button id="back" class="backbtn">← 回到總覽</button></div>
+    <div class="note" id="sub" style="margin:0"></div>
+    <div class="cols"><div>資金被抽走</div><div>誰在搬</div><div>資金流進去</div></div>
+    <svg id="sk" width="100%"></svg>
+  </div>
+  <ul class="foot">
+    <li>畫法：每個法人在每個產業（或每檔股票）的淨賣超畫在左邊，淨買超畫在右邊；法人自己的淨流出補成右下「離場／轉現金」，淨流入補成左下「場外資金進場」。這兩個灰色節點是補差額用的，只代表錢離開或進入「畫面上這一群」，不知道實際去了哪裡。</li>
+    <li><b>全市場產業別</b>＝交易所的產業分類（上市＋上櫃，ETF 自成一類）；點一個產業可看成分股，「← 回到總覽」返回。<b>自編主題族群</b>＝自己編的主題清單（themes.json，可隨時修改），只包含有歸類的股票；一檔股票若屬於多個主題，會在每個主題各算一次，所以主題加總會大於實際金額。</li>
+    <li><b>自營「合併」</b>＝跟截圖一樣把自營商的自行買賣和避險加在一起；<b>「拆開」</b>＝把避險（造市、申購買回的對沖）獨立成灰色節點。ETF 的自營成交大多是避險，不代表看法。</li>
+    <li><b>融資</b>＝融資餘額的增減（多半是散戶借錢買進），是餘額變化，和法人的買賣超性質不同，一起畫只是方便比較。金額＝股數 × 當天均價，是估算值（≈），單位億元。<b>依連線</b>排序＝把主要由同一類買賣方搬動的 ETF 排在一起，線比較不會交叉。</li>
+    <li>同一檔 ETF 可能同時出現在左右兩邊：例如外資賣、投信買，兩個方向分開畫。</li>
+    <li>資料來源：臺灣證券交易所、證券櫃檯買賣中心。<span id="built"></span> 只描述法人的買賣，不是投資建議。</li>
+  </ul>
+</div>
+<div id="tip"></div>
+<script>
+const D = /*DATA*/null;
+const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b981'], do:['自營（自行）','#10b981'], dh:['自營（避險）','#8b939e'], m:['融資','#eab308']};
+const PER = Object.keys(D.periods).map(Number).sort((a,b)=>a-b);
+const S = {per:String(PER[PER.length-1]), view:'industry', group:'ETF', who:'all', dmode:'split', topn:'all', order:'amt'};
+const ymd = s => `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6)}`;
+const yi = v => v / 1e8;
+const f1 = (x, sign) => (sign && x > 0 ? '+' : '') + x.toLocaleString('zh-TW', {minimumFractionDigits:1, maximumFractionDigits:1});
+const segs = {
+  per: PER.map(n => [String(n), n + ' 日']),
+  view: [['industry','全市場產業別'],['theme','自編主題族群']],
+  who: [['all','全部'],['f','外資'],['t','投信'],['d','自營'],['m','融資']],
+  dmode: [['merge','合併（同截圖）'],['split','拆開避險']],
+  topn: [['8','前 8'],['12','前 12'],['all','全部']],
+  order: [['amt','依金額'],['link','依連線']],
+};
+function seg(id) {
+  document.getElementById(id).innerHTML = segs[id].map(([k, l]) => `<button data-k="${k}" class="${S[id]===k?'on':''}">${l}</button>`).join('');
+}
+for (const id in segs) document.getElementById(id).onclick = e => { const k = e.target.dataset.k; if (!k) return;
+  if (id === 'view' && k !== S.view) S.group = null; S[id] = k; draw(); };
+document.getElementById('back').onclick = () => { S.group = null; draw(); };
+
+function actors() {
+  let a = S.dmode === 'merge' ? ['f','t','d','m'] : ['f','t','do','dh','m'];
+  if (S.who !== 'all') a = a.filter(k => k === S.who || (S.who === 'd' && (k === 'do' || k === 'dh')));
+  return a;
+}
+const amt = (r, k) => k === 'd' ? r.do + r.dh : (r[k] ?? 0);
+
+// Items to draw: ETF rows (full detail) when drilled into ETF; otherwise built from the compact all-securities list.
+const THEMES = D.themes || {};
+const themeOf = {}; for (const [t, cs] of Object.entries(THEMES)) for (const c of cs) (themeOf[c] ||= []).push(t);
+const groupsOf = c => S.view === 'industry' ? [(D.securities[c] || ['', '未分類（新上市等）'])[1]] : (themeOf[c] || []);
+function items(P) {
+  const W = 1e4;   // compact rows are in 萬元
+  const fromAll = a => ({code:a[0], name:(D.securities[a[0]] || [''])[0], f:a[1]*W, t:a[2]*W, do:a[3]*W, dh:a[4]*W, m:a[5] === null ? null : a[5]*W});
+  if (S.group) {
+    if (S.view === 'industry' && S.group === 'ETF') return P.rows;
+    return P.all.filter(a => groupsOf(a[0]).includes(S.group)).map(fromAll);
+  }
+  const g = {};
+  for (const a of P.all) for (const grp of groupsOf(a[0])) {
+    const x = g[grp] ||= {code:'', name:grp, grp, f:0, t:0, do:0, dh:0, m:0};
+    x.f += a[1]*W; x.t += a[2]*W; x.do += a[3]*W; x.dh += a[4]*W; x.m = (x.m === null || a[5] === null) ? null : x.m + a[5]*W;
+  }
+  return Object.values(g);
+}
+
+function draw() {
+  for (const id in segs) seg(id);
+  const P = D.periods[S.per], A = actors(), rows = items(P);
+  const unit = S.group ? '檔' : (S.view === 'industry' ? '個產業' : '個主題');
+  document.getElementById('back').style.display = S.group ? '' : 'none';
+  document.getElementById('title').textContent = S.group ? `${S.group} — 成分股資金流向`
+    : (S.view === 'industry' ? '全市場 — 產業資金流向（點一個產業看成分股）' : '自編主題族群 — 資金流向（點一個主題看成分股）');
+  // KPIs (all ETFs, independent of filters, like the screenshot's top row)
+  const M = P.market;
+  const kp = [['交易日數', null, S.per + ' 日'], ['全市場成交值', null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
+              ['外資淨買賣', M.f], ['投信淨買賣', M.t], ['自營淨買賣', M.d], ['融資增減', M.m]];
+  document.getElementById('kpis').innerHTML = kp.map(([l, v, s]) => {
+    const txt = s !== undefined ? s : v === null ? '—' : (Math.abs(yi(v)) >= 10 ? f1(yi(v), true).replace(/\.\d$/, '') : f1(yi(v), true)) + ' 億';
+    const cls = v === null || s !== undefined ? '' : v > 0 ? 'up' : 'down';
+    return `<div class="kpi"><div class="l">${l}</div><div class="v ${cls}">${txt}</div></div>`; }).join('');
+  document.getElementById('note').textContent = '上列為全市場合計（上市＋上櫃，含 ETF／存託憑證／受益證券，不含權證），不隨選項改變；以均價估算（≈），與官方金額約差 1% 內。自營含避險。';
+
+  // edges
+  const out = {}, inn = {}, L = [], R = [];
+  const net = {};
+  for (const k of A) net[k] = 0;
+  for (const r of rows) for (const k of A) {
+    const v = amt(r, k); if (Math.abs(v) < 1) continue;
+    net[k] += v;
+    const key = r.code || r.name, base = {code:r.code, name:r.name, grp:r.grp, by:{}};
+    if (v < 0) { (out[key] ||= {...base, by:{}}).by[k] = -v; }
+    else { (inn[key] ||= {...base, by:{}}).by[k] = v; }
+  }
+  const sumBy = o => Object.values(o.by).reduce((a, b) => a + b, 0);
+  let left = Object.entries(out).map(([c, o]) => ({id:'L'+c, label:o.code ? `${o.code} ${o.name}` : o.name, grp:o.grp, by:o.by, v:sumBy(o)})).sort((a,b)=>b.v-a.v);
+  let right = Object.entries(inn).map(([c, o]) => ({id:'R'+c, label:o.code ? `${o.code} ${o.name}` : o.name, grp:o.grp, by:o.by, v:sumBy(o)})).sort((a,b)=>b.v-a.v);
+  const fold = (arr, side) => {
+    if (S.topn === 'all') return arr;
+    const n = +S.topn; if (arr.length <= n) return arr;
+    const rest = arr.slice(n), by = {};
+    for (const x of rest) for (const k in x.by) by[k] = (by[k] || 0) + x.by[k];
+    return arr.slice(0, n).concat([{id:side+'other', label:`其他 ${rest.length} ${unit}`, by, v:sumBy({by}), other:true}]);
+  };
+  if (S.order === 'link') {   // group nodes by the actor that moves the most money in them, so lines cross less
+    const dom = n => { let best = 0, bk = A[0]; for (const k of A) if ((n.by[k] || 0) > best) { best = n.by[k]; bk = k; } return A.indexOf(bk); };
+    const cmp = (a, b) => dom(a) - dom(b) || b.v - a.v;
+    left.sort(cmp); right.sort(cmp);
+  }
+  left = fold(left, 'L'); right = fold(right, 'R');
+  const plugIn = {}, plugOut = {};
+  for (const k of A) { if (net[k] > 0) plugIn[k] = net[k]; else if (net[k] < 0) plugOut[k] = -net[k]; }
+  if (Object.keys(plugIn).length) left.push({id:'Lplug', label:'場外資金進場', by:plugIn, v:sumBy({by:plugIn}), plug:true});
+  if (Object.keys(plugOut).length) right.push({id:'Rplug', label:'離場／轉現金', by:plugOut, v:sumBy({by:plugOut}), plug:true});
+  const mid = A.map(k => ({id:'M'+k, k, v:left.reduce((s, n) => s + (n.by[k] || 0), 0)}));
+  const moved = left.filter(n => !n.plug).reduce((s, n) => s + n.v, 0);
+  document.getElementById('sub').textContent =
+    `${A.map(k => ACT[k][0]).join('＋')} 在 ${ymd(P.start)} ～ ${ymd(P.end)} 期間共搬動 ${Math.round(yi(moved)).toLocaleString('zh-TW')} 億元（單邊計）· 線越粗＝金額越大 · 滑過看細節`;
+
+  // layout
+  const svg = document.getElementById('sk'), W = svg.clientWidth || 1200;
+  const nMax = Math.max(left.length, right.length);
+  const H = 880;
+  svg.setAttribute('height', H + 26); svg.setAttribute('viewBox', `0 -26 ${W} ${H + 26}`);
+  const nw = 14, xL = W * 0.19, xM = W * 0.5 - nw / 2, xR = W * 0.80 - nw;
+  const total = Math.max(left.reduce((s, n) => s + n.v, 0), 1);
+  const stack = (nodes, pad) => {   // shrink the scale until tiny nodes (min 1px) still fit
+    let k = (H - 20 - pad * (nodes.length - 1)) / total;
+    for (let i = 0; i < 60; i++) {
+      let y = 10; for (const n of nodes) { n.h = Math.max(1, n.v * k); n.y = y; y += n.h + pad; }
+      if (y - pad <= H - 10) break; k *= 0.97;
+    }
+    return k;
+  };
+  const padSide = Math.max(0.5, Math.min(6, 160 / nMax));
+  const kL = Math.min(stack(left, padSide), stack(right, padSide));
+  { let y = 10; for (const n of left) { n.h = Math.max(1, n.v * kL); n.y = y; y += n.h + padSide; } }
+  // middle: same scale, larger gaps
+  { const sumM = mid.reduce((s, n) => s + n.v, 0); const gap = Math.max(18, (H - 20 - sumM * kL) / Math.max(1, mid.length - 1)); let y = 10;
+    for (const n of mid) { n.h = Math.max(2, n.v * kL); n.y = y; y += n.h + Math.min(gap, 70); } }
+  // rescale right to the same unit (right total == left total by construction)
+  const kR = kL; { let y = 10; for (const n of right) { n.h = Math.max(1, n.v * kR); n.y = y; y += n.h + padSide; } }
+
+  let g = '';
+  const band = (x0, y0, x1, y1, h, col, op, tip) => {
+    const xm = (x0 + x1) / 2;
+    g += `<path class="lk" d="M${x0},${y0}C${xm},${y0} ${xm},${y1} ${x1},${y1}L${x1},${y1+h}C${xm},${y1+h} ${xm},${y0+h} ${x0},${y0+h}Z" fill="${col}" opacity="${op}" data-tip="${tip}"/>`;
+  };
+  const midIn = {}, midOut = {}; for (const m of mid) { midIn[m.k] = m.y; midOut[m.k] = m.y; }
+  for (const n of left) { let y = n.y;
+    for (const k of A) { const v = n.by[k]; if (!v) continue; const h = v * kL;
+      band(xL + nw, y, xM, midIn[k], h, n.plug ? '#8b939e' : '#3b6fb6', n.plug ? .35 : .55, `${n.label} → ${ACT[k][0]}：${f1(yi(v))} 億`);
+      y += h; midIn[k] += h; } }
+  for (const n of right) { let y = n.y;
+    for (const k of A) { const v = n.by[k]; if (!v) continue; const h = v * kR;
+      band(xM + nw, midOut[k], xR, y, h, n.plug ? '#8b939e' : '#b8474b', n.plug ? .35 : .55, `${ACT[k][0]} → ${n.label}：${f1(yi(v))} 億`);
+      y += h; midOut[k] += h; } }
+  let lastL = -99, lastR = -99;
+  for (const n of left) {
+    const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
+    g += `<rect${ga} x="${xL}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#3b82f6'}"/>`;
+    const cyL = n.y + n.h / 2; if (cyL - lastL >= 13 || n.plug) { lastL = cyL; g += `<text${ga} x="${xL - 8}" y="${n.y + n.h / 2 + 4}" text-anchor="end">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
+  }
+  for (const n of right) {
+    const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
+    g += `<rect${ga} x="${xR}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#f0525a'}"/>`;
+    const cyR = n.y + n.h / 2; if (cyR - lastR >= 13 || n.plug) { lastR = cyR; g += `<text${ga} x="${xR + nw + 8}" y="${n.y + n.h / 2 + 4}">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
+  }
+  for (const m of mid) {
+    g += `<rect x="${xM}" y="${m.y}" width="${nw}" height="${m.h}" rx="2" fill="${ACT[m.k][1]}"/>`;
+    const nv = yi(net[m.k]);
+    g += `<text class="mid" x="${xM + nw / 2}" y="${m.y - 6}" text-anchor="middle">${ACT[m.k][0]} <tspan fill="${nv > 0 ? '#f0525a' : '#4c8dff'}">${f1(nv, true)} 億</tspan></text>`;
+  }
+  svg.innerHTML = g;
+}
+document.getElementById('sk').addEventListener('click', e => {
+  const el = e.target.closest('[data-grp]'); if (el) { S.group = el.dataset.grp; draw(); scrollTo(0, 0); }
+});
+const tip = document.getElementById('tip');
+document.getElementById('sk').addEventListener('mousemove', e => {
+  const t = e.target.dataset && e.target.dataset.tip;
+  if (t) { tip.textContent = t; tip.style.display = 'block'; tip.style.left = e.clientX + 12 + 'px'; tip.style.top = e.clientY + 12 + 'px'; }
+  else tip.style.display = 'none';
+});
+document.getElementById('built').textContent = ` 資料日期 ${ymd(D.asof)}，產生時間 ${D.built_utc}。`;
+addEventListener('resize', () => draw());
+draw();
+</script>
+</body>
+</html>
