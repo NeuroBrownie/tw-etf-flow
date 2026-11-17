@@ -16,6 +16,7 @@ header.top .tabs button{border-bottom-left-radius:0;border-bottom-right-radius:0
 button:focus-visible,tr.clickable:focus-visible td,th:focus-visible{outline:2px solid #8ab4ff;outline-offset:-2px}
 h1{font-size:22px;margin:0 0 4px}
 .sub{color:var(--mute);font-size:13px}
+.fresh{font-size:13px;color:var(--text);margin:2px 0 4px}.fresh .mute{color:var(--mute)}.fresh .warn{color:#f5b942}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0}
 .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{background:none;border:0;color:var(--mute);padding:7px 14px;font:inherit;cursor:pointer}
@@ -54,6 +55,7 @@ tr.sel td{background:rgba(76,141,255,.12)}
 <body>
 <header class="top">
   <h1>台股 ETF 法人進出表</h1>
+  <div class="fresh" id="fresh"></div>
   <div class="sub" id="sub"></div>
   <div class="tabs" id="tabs"><button data-v="table" class="on">表格</button><button data-v="flow">流向圖</button></div>
 </header>
@@ -187,6 +189,21 @@ document.getElementById('list').onclick = e => { const k = e.target.dataset.k; i
 document.getElementById('q').oninput = e => { S.q = e.target.value.trim(); render(); };
 document.getElementById('moreBtn').onclick = () => { S.all = !S.all; render(); };
 document.getElementById('built').textContent = ` 資料日期 ${ymd(D.asof)}，產生時間 ${D.built_utc}。`;
+// freshness line: data date, when this page was built (Taipei time), the update schedule, and a warning if it looks stale
+(() => {
+  const WD = '日一二三四五六';
+  const asof = new Date(Date.UTC(+D.asof.slice(0,4), +D.asof.slice(4,6) - 1, +D.asof.slice(6)));
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(D.built_utc || '');
+  let built = '—';
+  if (m) { const t = new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]) + 8 * 3600e3);
+    built = `${t.getUTCFullYear()}/${String(t.getUTCMonth()+1).padStart(2,'0')}/${String(t.getUTCDate()).padStart(2,'0')} ${String(t.getUTCHours()).padStart(2,'0')}:${String(t.getUTCMinutes()).padStart(2,'0')}`; }
+  const nowTpe = new Date(Date.now() + 8 * 3600e3);
+  const days = Math.floor((Date.UTC(nowTpe.getUTCFullYear(), nowTpe.getUTCMonth(), nowTpe.getUTCDate()) - asof) / 864e5);
+  let warn = '';   // after a normal weekend the gap is 3 days (Fri → Mon before 21:37); more than 4 means a missed update or a long holiday
+  if (days > 4) warn = ` <span class="warn">· 資料已 ${days} 天未更新（可能是連假或更新失敗）</span>`;
+  document.getElementById('fresh').innerHTML =
+    `資料截至 <b>${ymd(D.asof)}（週${WD[asof.getUTCDay()]}）收盤</b> <span class="mute">· 頁面更新於 ${built}（台北時間）· 每個交易日 21:37 後自動更新</span>${warn}`;
+})();
 render();
 const fr = document.getElementById('flowFrame');
 const fit = () => { try { fr.style.height = '200px'; fr.style.height = fr.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) {} };
