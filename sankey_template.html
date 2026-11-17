@@ -20,6 +20,13 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:6px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .kpi .l{color:var(--mute);font-size:12px}.kpi .v{font-size:21px;font-weight:700;margin-top:2px}
+.kpi .s{color:var(--mute);font-size:11.5px;margin-top:1px}
+details.offi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin:0 0 14px}
+details.offi summary{cursor:pointer;color:var(--text);font-weight:600;font-size:13.5px}
+details.offi table{border-collapse:collapse;width:100%;max-width:720px;font-variant-numeric:tabular-nums;font-size:13px;margin:8px 0}
+details.offi th,details.offi td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+details.offi th{color:var(--mute);font-weight:500}details.offi th.l,details.offi td.l{text-align:left}
+details.offi p{color:var(--mute);font-size:12.5px;margin:6px 0 4px}
 .note{color:var(--mute);font-size:12.5px;margin:6px 0 14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
 .card h2{font-size:18px;margin:0 0 4px}
@@ -66,6 +73,7 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="note" id="note"></div>
+  <details class="offi" id="offi"><summary>交易所官方統計（含權證）</summary><div id="offiBody"></div></details>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <h2 id="title"></h2><button id="back" class="backbtn">← 回到總覽</button></div>
@@ -157,13 +165,23 @@ function draw() {
     : (S.view === 'industry' ? '全市場 — 產業資金流向（點一個產業看成分股）' : '自編主題族群 — 資金流向（點一個主題看成分股）');
   // KPIs (all ETFs, independent of filters, like the screenshot's top row)
   const M = P.market;
-  const kp = [['交易日數', null, S.per + ' 日'], ['全市場 成交值' + infoBtn('上市＋上櫃的成交金額加總（交易所公布的數字），包含 ETF、ETN、存託憑證和受益證券，不含權證。新聞常說的「大盤成交值」通常只算上市，所以會比這裡小。'), null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
-              ['全市場 外資淨買賣', M.f], ['全市場 投信淨買賣', M.t], ['全市場 自營淨買賣' + infoBtn('自營商＝證券公司用自己的帳戶買賣，包含兩種：「自行買賣」是自己判斷的進出；「避險」是為了發行權證、幫 ETF 造市或處理申購買回而做的對沖。避險通常占大部分，不代表看多或看空。ETF 的部分在「表格」分頁有把兩者拆開。這裡的數字是交易所公布的官方金額（上市＋上櫃，含權證）。'), M.d], ['全市場 融資增減', M.m]];
-  document.getElementById('kpis').innerHTML = kp.map(([l, v, s]) => {
+  const EST = '不含權證 · ≈ 估算';
+  const kp = [['交易日數', null, S.per + ' 日', ''], ['全市場 成交值' + infoBtn('上市＋上櫃的成交金額加總（交易所公布的數字），包含 ETF、ETN、存託憑證和受益證券，不含權證。新聞常說的「大盤成交值」通常只算上市，所以會比這裡小。'), null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億', '交易所公布 · 不含權證'],
+              ['全市場 外資淨買賣', M.f, undefined, EST], ['全市場 投信淨買賣', M.t, undefined, EST], ['全市場 自營淨買賣' + infoBtn('自營商＝證券公司用自己的帳戶買賣，包含兩種：「自行買賣」是自己判斷的進出；「避險」是為了發行權證、幫 ETF 造市或處理申購買回而做的對沖。避險通常占大部分，不代表看多或看空。ETF 的部分在「表格」分頁有把兩者拆開。這裡的數字不含權證，以每檔當天均價估算（≈）；交易所公布的官方金額（含權證）在下方「交易所官方統計」。'), M.d, undefined, EST], ['全市場 融資增減', M.m, undefined, '≈ 估算']];
+  document.getElementById('kpis').innerHTML = kp.map(([l, v, s, sub]) => {
     const txt = s !== undefined ? s : v === null ? '—' : (Math.abs(yi(v)) >= 10 ? (v > 0 ? '+' : '') + Math.round(yi(v)).toLocaleString('zh-TW') : f1(yi(v), true)) + ' 億';
     const cls = v === null || s !== undefined ? '' : v > 0 ? 'up' : 'down';
-    return `<div class="kpi"><div class="l">${l}</div><div class="v ${cls}">${txt}</div></div>`; }).join('');
-  document.getElementById('note').textContent = '上列為全市場合計（上市＋上櫃），不隨選項改變。外資、投信、自營是交易所公布的官方買賣超金額（含權證，自營含避險）；成交值是交易所公布的成交金額（不含權證）；融資以每檔當天均價估算（≈）。下方流向圖不含權證，金額以均價估算（≈），所以加總會和上列略有不同。';
+    return `<div class="kpi"><div class="l">${l}</div><div class="v ${cls}">${txt}</div>${sub ? `<div class="s">${sub}</div>` : ''}</div>`; }).join('');
+  // official totals (incl. warrants) vs our estimate, for the selected period
+  { const r1 = v => v === null || v === undefined ? '—' : (v > 0 ? '+' : '') + Math.round(yi(v)).toLocaleString('zh-TW');
+    const cl = v => v === null || v === undefined ? '' : v > 0 ? 'up' : v < 0 ? 'down' : '';
+    const row = (name, o, e) => `<tr><td class="l">${name}</td><td class="${cl(o)}">${r1(o)}</td><td class="${cl(e)}">${r1(e)}</td><td>${o === null || o === undefined ? '—' : r1(o - e)}</td></tr>`;
+    document.getElementById('offiBody').innerHTML =
+      `<table><tr><th class="l">${S.per} 日（億）</th><th>交易所官方（含權證）</th><th>本頁估算（不含權證）</th><th>差額</th></tr>` +
+      row('外資', M.off_f, M.f) + row('投信', M.off_t, M.t) + row('自營（含避險）', M.off_d, M.d) + `</table>` +
+      `<p>本頁資金流向以股票及 ETF 為分析範圍，不含權證。法人買賣金額依買賣超股數及當日均價估算，與交易所公布的含權證官方金額不同。兩者差額包含統計範圍及估算方法差異，不代表權證的精確買賣金額。</p>` +
+      `<p>來源：臺灣證券交易所「三大法人買賣金額統計表」、證券櫃檯買賣中心「三大法人買賣金額彙總表」（上市＋上櫃加總）。</p>`; }
+  document.getElementById('note').textContent = '上列為全市場合計（上市＋上櫃，股票、ETF、存託憑證、受益證券，不含權證），不隨選項改變，和下方流向圖是同一個範圍。外資、投信、自營、融資依買賣超股數 × 當天均價估算（≈），並非交易所官方金額；成交值是交易所公布的成交金額。';
 
   // edges
   const out = {}, inn = {}, L = [], R = [];

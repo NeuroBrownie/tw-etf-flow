@@ -238,11 +238,15 @@ def main():
             if not any(v) and val == 0: continue
             allrows.append([c] + v + [round(val / 1e4)])
         mk = mkt_day[-n:]
-        # 外資/投信/自營 cards use the exchanges' official totals; our average-price estimate is kept as est_* for checking
+        # cards: our warrant-free average-price estimate (same universe as the flow chart);
+        # off_*: the exchanges' official totals incl. warrants, shown only in the 「交易所官方統計（含權證）」 fold-out
         market = {"val": sum(x["val"] for x in mk)}
-        for k in ("f", "t", "d"): market["est_" + k] = sum(x[k] for x in mk)
+        # same per-security amounts as the flow chart, so the cards equal the chart's totals
+        market["f"] = sum((r[1] or 0) for r in allrows) * 1e4
+        market["t"] = sum((r[2] or 0) for r in allrows) * 1e4
+        market["d"] = sum((r[3] or 0) + (r[4] or 0) for r in allrows) * 1e4
         offs = [official_totals(root, ymd) for ymd in days[-n:]]
-        for k in ("f", "t", "d"): market[k] = None if any(o is None for o in offs) else sum(o[k] for o in offs)
+        for k in ("f", "t", "d"): market["off_" + k] = None if any(o is None for o in offs) else sum(o[k] for o in offs)
         market["m"] = None if any(x["m"] is None for x in mk) else sum(x["m"] for x in mk)
         periods[str(n)] = dict(start=days[-n], end=days[-1], rows=rows, market=market, all=allrows)
 
