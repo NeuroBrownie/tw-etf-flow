@@ -35,8 +35,8 @@ svg text{fill:var(--text);font-size:14px}
 svg .v{fill:var(--mute)}
 svg .mid{font-weight:700;font-size:15px;paint-order:stroke;stroke:#1a1e24;stroke-width:4px;stroke-linejoin:round}
 .legend{color:var(--mute);font-size:13px;margin-top:2px}
-details.defsBox{background:var(--bg);margin:12px 0 2px}
-.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 18px;margin:8px 0 4px;font-size:13px;line-height:1.55}
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 18px;margin:10px 0 2px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.55}
+details.footBox{margin:14px 0 0}details.footBox .foot{margin-top:6px}
 .defs b{font-weight:700}.defs i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 6px -1px 0}
 .defs .h{grid-column:1/-1;color:var(--mute);font-size:12.5px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px -1px 8px}
@@ -92,14 +92,16 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
     <svg id="sk" width="100%"></svg>
     </div></div>
     <div id="mob"></div>
-    <details class="offi defsBox" id="defsBox"><summary>「誰在搬」各角色是什麼</summary><div class="defs" id="defs"></div></details>
+    <div class="defs" id="defs"></div>
   </div>
-  <ul class="foot">
+  <details class="offi footBox"><summary>畫法與名詞說明</summary><ul class="foot">
     <li>畫法：每個法人在每個產業（或每檔股票）的淨賣超畫在左邊，淨買超畫在右邊；法人自己的淨流出補成右下「離場／轉現金」，淨流入補成左下「場外資金進場」。這兩個灰色節點是補差額用的，只代表錢離開或進入「畫面上這一群」，不知道實際去了哪裡。</li>
     <li><b>全市場產業別</b>＝交易所的產業分類（上市＋上櫃，ETF 自成一類）；點一個產業可看成分股，「← 回到總覽」返回。<b>自編主題族群</b>＝自己編的主題清單（themes.json，可隨時修改），只包含有歸類的股票；一檔股票若屬於多個主題，會在每個主題各算一次，所以主題加總會大於實際金額。</li>
     <li><b>自營「合併」</b>＝把自營商的自行買賣和避險加在一起；<b>「拆開」</b>＝把避險（造市、申購買回的對沖）獨立成灰色節點。ETF 的自營成交大多是避險，不代表看法。</li>
     <li><b>融資</b>＝融資餘額的增減（多半是散戶借錢買進），是餘額變化，和法人的買賣超性質不同，一起畫只是方便比較。金額＝股數 × 當天均價，是估算值（≈），單位億元。<b>依連線</b>排序＝把主要由同一類買賣方搬動的 ETF 排在一起，線比較不會交叉。</li>
     <li>同一檔 ETF 可能同時出現在左右兩邊：例如外資賣、投信買，兩個方向分開畫。</li>
+  </ul></details>
+  <ul class="foot">
     <li>資料來源：臺灣證券交易所、證券櫃檯買賣中心。<span id="built"></span> 只描述法人的買賣，不是投資建議。</li>
   </ul>
 </div>
@@ -235,7 +237,7 @@ function draw() {
   if (Object.keys(plugIn).length) left.push({id:'Lplug', label:'場外資金進場', by:plugIn, v:sumBy({by:plugIn}), plug:true});
   if (Object.keys(plugOut).length) right.push({id:'Rplug', label:'離場／轉現金', by:plugOut, v:sumBy({by:plugOut}), plug:true});
   const mid = A.map(k => ({id:'M'+k, k, v:left.reduce((s, n) => s + (n.by[k] || 0), 0)}));
-  document.getElementById('defs').innerHTML =
+  document.getElementById('defs').innerHTML = '<div class="h">「誰在搬」各角色是什麼</div>' +
     A.map(k => `<div><i style="background:${ACT[k][1]}"></i><b>${ACT[k][0]}</b>：${DEF[k]}</div>`).join('') +
     '<div><i style="background:#8b939e"></i><b>場外資金進場／離場・轉現金</b>：補差額用的灰色節點。某類買賣方整體淨買進，差額畫成左下「場外資金進場」；淨賣出畫成右下「離場／轉現金」。只代表錢進出畫面上這一群，不知道實際來源或去向。</div>';
   const moved = left.filter(n => !n.plug).reduce((s, n) => s + n.v, 0);
