@@ -46,6 +46,12 @@ svg .mid{font-weight:700;font-size:13px;paint-order:stroke;stroke:#1a1e24;stroke
 .foot li{margin:3px 0}
 .backbtn{background:none;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer;white-space:nowrap}
 svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
+.info{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--mute);color:var(--mute);font:600 10.5px/1 Georgia,serif;font-style:italic;margin-left:5px;cursor:pointer;background:none;padding:0;position:relative;vertical-align:1px}
+.info.open{color:var(--text);border-color:var(--text)}
+@media (hover:hover){.info:hover{color:var(--text);border-color:var(--text)}}
+.info .pop{display:none;position:absolute;top:22px;left:-10px;width:270px;max-width:80vw;background:#0b0d10;border:1px solid var(--line);color:var(--text);font:400 12.5px/1.6 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-style:normal;padding:9px 11px;border-radius:8px;z-index:30;text-align:left;white-space:normal;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.info.open .pop,.info:focus-visible .pop{display:block}
+@media (hover:hover){.info:hover .pop{display:block}}
 </style>
 </head>
 <body>
@@ -81,6 +87,16 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
 <div id="tip"></div>
 <script>
 const D = /*DATA*/null;
+// ⓘ explanations: hover or keyboard focus on desktop, tap to open/close on phones; keep the bubble inside the screen
+const infoBtn = (text) => `<button class="info" type="button" aria-label="說明">i<span class="pop" role="tooltip">${text}</span></button>`;
+const placePop = btn => { const pop = btn.querySelector('.pop'); if (!pop) return; pop.style.left = '-10px';
+  const r = pop.getBoundingClientRect(), over = r.right - (document.documentElement.clientWidth - 8); if (over > 0) pop.style.left = (-10 - over) + 'px'; };
+document.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('.info'); if (b) placePop(b); });
+document.addEventListener('focusin', e => { const b = e.target.closest && e.target.closest('.info'); if (b) placePop(b); });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.info');
+  document.querySelectorAll('.info.open').forEach(x => { if (x !== b) x.classList.remove('open'); });
+  if (b) { b.classList.toggle('open'); placePop(b); e.stopPropagation(); } }, true);
+
 const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b981'], do:['自營（自行）','#10b981'], dh:['自營（避險）','#8b939e'], m:['融資','#eab308']};
 const PER = Object.keys(D.periods).map(Number).sort((a,b)=>a-b);
 const vw = () => { const w = document.documentElement.clientWidth; if (w) return w; try { return parent.document.documentElement.clientWidth || 1200; } catch (e) { return 1200; } };
@@ -141,8 +157,8 @@ function draw() {
     : (S.view === 'industry' ? '全市場 — 產業資金流向（點一個產業看成分股）' : '自編主題族群 — 資金流向（點一個主題看成分股）');
   // KPIs (all ETFs, independent of filters, like the screenshot's top row)
   const M = P.market;
-  const kp = [['交易日數', null, S.per + ' 日'], ['全市場 成交值', null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
-              ['全市場 外資淨買賣', M.f], ['全市場 投信淨買賣', M.t], ['全市場 自營淨買賣', M.d], ['全市場 融資增減', M.m]];
+  const kp = [['交易日數', null, S.per + ' 日'], ['全市場 成交值' + infoBtn('上市＋上櫃的成交金額加總（交易所公布的數字），包含 ETF、ETN、存託憑證和受益證券，不含權證。新聞常說的「大盤成交值」通常只算上市，所以會比這裡小。'), null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
+              ['全市場 外資淨買賣', M.f], ['全市場 投信淨買賣', M.t], ['全市場 自營淨買賣' + infoBtn('自營商＝證券公司用自己的帳戶買賣，包含兩種：「自行買賣」是自己判斷的進出；「避險」是為了發行權證、幫 ETF 造市或處理申購買回而做的對沖。避險通常占大部分，不代表看多或看空。ETF 的部分在「表格」分頁有把兩者拆開。金額以每檔當天均價估算（≈）。'), M.d], ['全市場 融資增減', M.m]];
   document.getElementById('kpis').innerHTML = kp.map(([l, v, s]) => {
     const txt = s !== undefined ? s : v === null ? '—' : (Math.abs(yi(v)) >= 10 ? f1(yi(v), true).replace(/\.\d$/, '') : f1(yi(v), true)) + ' 億';
     const cls = v === null || s !== undefined ? '' : v > 0 ? 'up' : 'down';

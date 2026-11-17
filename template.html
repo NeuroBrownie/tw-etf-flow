@@ -50,6 +50,12 @@ tr.sel td{background:rgba(76,141,255,.12)}
 .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 #flowView{display:none}
 #flowFrame{display:block;width:100%;border:0;min-height:900px}
+.info{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--mute);color:var(--mute);font:600 10.5px/1 Georgia,serif;font-style:italic;margin-left:5px;cursor:pointer;background:none;padding:0;position:relative;vertical-align:1px}
+.info.open{color:var(--text);border-color:var(--text)}
+@media (hover:hover){.info:hover{color:var(--text);border-color:var(--text)}}
+.info .pop{display:none;position:absolute;top:22px;left:-10px;width:270px;max-width:80vw;background:#0b0d10;border:1px solid var(--line);color:var(--text);font:400 12.5px/1.6 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;font-style:normal;padding:9px 11px;border-radius:8px;z-index:30;text-align:left;white-space:normal;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.info.open .pop,.info:focus-visible .pop{display:block}
+@media (hover:hover){.info:hover .pop{display:block}}
 </style>
 </head>
 <body>
@@ -99,6 +105,16 @@ tr.sel td{background:rgba(76,141,255,.12)}
 
 <script>
 const D = /*DATA*/null; window.__D = D;
+// ⓘ explanations: hover or keyboard focus on desktop, tap to open/close on phones; keep the bubble inside the screen
+const infoBtn = (text) => `<button class="info" type="button" aria-label="說明">i<span class="pop" role="tooltip">${text}</span></button>`;
+const placePop = btn => { const pop = btn.querySelector('.pop'); if (!pop) return; pop.style.left = '-10px';
+  const r = pop.getBoundingClientRect(), over = r.right - (document.documentElement.clientWidth - 8); if (over > 0) pop.style.left = (-10 - over) + 'px'; };
+document.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('.info'); if (b) placePop(b); });
+document.addEventListener('focusin', e => { const b = e.target.closest && e.target.closest('.info'); if (b) placePop(b); });
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.info');
+  document.querySelectorAll('.info.open').forEach(x => { if (x !== b) x.classList.remove('open'); });
+  if (b) { b.classList.toggle('open'); placePop(b); e.stopPropagation(); } }, true);
+
 const fmt = (v, d) => {
   if (v === null || v === undefined || Number.isNaN(v)) return '<span class="na">—</span>';
   const x = v / 1e8, a = Math.abs(x), dp = d ?? 1;
@@ -138,7 +154,7 @@ function renderKpis(rows) {
     `資料期間 ${ymd(P.start)} ～ ${ymd(P.end)}（${S.p} 個交易日）· 上市＋上櫃 · 金額單位：億元（≈ 估算）`;
   const k = [['ETF 外資', s('f')], ['ETF 投信', s('t')], ['ETF 自營（自行）', s('do')], ['ETF 法人合計（不含避險）', add(s('f'), s('t'), s('do'))]];
   document.getElementById('kpis').innerHTML = k.map(([l, v]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${fmt(v, 1)}</div></div>`).join('') +
-    `<div class="kpi hedge"><div class="l">ETF 自營（避險）· 造市與對沖</div><div class="v">${fmtH(s('dh'))}</div></div>` +
+    `<div class="kpi hedge"><div class="l">ETF 自營（避險）· 造市與對沖${infoBtn('證券商為了幫 ETF 造市、處理申購和買回而做的對沖買賣。這是 ETF 交易機制造成的，不代表看多或看空，所以用灰色顯示，也不算進「法人合計」。')}</div><div class="v">${fmtH(s('dh'))}</div></div>` +
     `<div class="kpi"><div class="l">ETF 融資增減</div><div class="v">${fmt(s('m'), 1)}</div></div>`;
 }
 function renderTypes(rows) {
