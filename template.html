@@ -12,7 +12,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system
 .wrap{max-width:none;margin:0;padding:16px 16px 60px}
 header.top{background:var(--card);border-bottom:1px solid var(--line);padding:16px 16px 0}
 header.top .tabs{margin:12px 0 0}
-header.top .tabs button{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0}
+header.top .tabs button,header.top .tabs a{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0}
+.tabs a{background:var(--card);border:1px solid var(--line);color:var(--mute);border-radius:8px;padding:8px 18px;font-weight:600;text-decoration:none}
 button:focus-visible,tr.clickable:focus-visible td,th:focus-visible{outline:2px solid #8ab4ff;outline-offset:-2px}
 h1{font-size:22px;margin:0 0 4px}
 .sub{color:var(--mute);font-size:13px}
@@ -63,7 +64,7 @@ tr.sel td{background:rgba(76,141,255,.12)}
   <h1>台股 ETF 法人進出表</h1>
   <div class="fresh" id="fresh"></div>
   <div class="sub" id="sub"></div>
-  <div class="tabs" id="tabs"><button data-v="table" class="on">表格</button><button data-v="flow">流向圖</button></div>
+  <div class="tabs" id="tabs"><button data-v="table" class="on">表格</button><button data-v="flow">流向圖</button><a href="validation.html" title="和參考網站的比對紀錄">驗證</a></div>
 </header>
 <div id="flowView"><iframe id="flowFrame" title="ETF 資金流向圖" srcdoc="<!--SANKEY-->"></iframe></div>
 <div class="wrap" id="tableView">

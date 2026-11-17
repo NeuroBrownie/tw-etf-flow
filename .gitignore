@@ -1,5 +1,6 @@
 build/
 out/
 logs/
+validation/
 .DS_Store
 __pycache__/

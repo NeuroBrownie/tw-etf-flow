@@ -258,12 +258,17 @@ function draw() {
   for (const n of left) {
     const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
     g += `<rect${ga} x="${xL}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#3b82f6'}"/>`;
-    const cyL = n.y + n.h / 2; if ((cyL - lastL >= 13 && n.v >= 5e6) || n.plug) { lastL = cyL; g += `<text${ga} x="${xL - 8}" y="${n.y + n.h / 2 + 4}" text-anchor="end">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
+    // labels stack downward (13 px apart) so the biggest nodes always get a label, even when nodes are thin and close together
+    const cyL = n.y + n.h / 2, yl = Math.max(cyL, lastL + 13);
+    if ((n.v >= 5e6 && yl <= H + 6 && yl - cyL < 120) || n.plug) { const y = n.plug ? Math.max(cyL, lastL + 13) : yl; lastL = y;
+      g += `<text${ga} x="${xL - 8}" y="${y + 4}" text-anchor="end">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
   }
   for (const n of right) {
     const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
     g += `<rect${ga} x="${xR}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#f0525a'}"/>`;
-    const cyR = n.y + n.h / 2; if ((cyR - lastR >= 13 && n.v >= 5e6) || n.plug) { lastR = cyR; g += `<text${ga} x="${xR + nw + 8}" y="${n.y + n.h / 2 + 4}">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
+    const cyR = n.y + n.h / 2, yr = Math.max(cyR, lastR + 13);
+    if ((n.v >= 5e6 && yr <= H + 6 && yr - cyR < 120) || n.plug) { lastR = yr;
+      g += `<text${ga} x="${xR + nw + 8}" y="${yr + 4}">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
   }
   for (const m of mid) {
     g += `<rect x="${xM}" y="${m.y}" width="${nw}" height="${m.h}" rx="2" fill="${ACT[m.k][1]}"/>`;
