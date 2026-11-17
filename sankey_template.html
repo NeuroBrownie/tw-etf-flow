@@ -30,11 +30,14 @@ details.offi p{color:var(--mute);font-size:12.5px;margin:6px 0 4px}
 .note{color:var(--mute);font-size:12.5px;margin:6px 0 14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
 .card h2{font-size:18px;margin:0 0 4px}
-.cols{display:grid;grid-template-columns:38% 24% 38%;color:var(--mute);font-size:13px;text-align:center;margin:14px 0 4px}
-svg text{fill:var(--text);font-size:12px}
+.cols{display:grid;grid-template-columns:38% 24% 38%;color:var(--mute);font-size:14px;text-align:center;margin:14px 0 4px}
+svg text{fill:var(--text);font-size:14px}
 svg .v{fill:var(--mute)}
-svg .mid{font-weight:700;font-size:13px;paint-order:stroke;stroke:#1a1e24;stroke-width:4px;stroke-linejoin:round}
-.legend{color:var(--mute);font-size:12px;margin-top:2px}
+svg .mid{font-weight:700;font-size:15px;paint-order:stroke;stroke:#1a1e24;stroke-width:4px;stroke-linejoin:round}
+.legend{color:var(--mute);font-size:13px;margin-top:2px}
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 18px;margin:10px 0 2px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.55}
+.defs b{font-weight:700}.defs i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 6px -1px 0}
+.defs .h{grid-column:1/-1;color:var(--mute);font-size:12.5px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px -1px 8px}
 #mob{display:none}
 #skwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -88,6 +91,7 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
     <svg id="sk" width="100%"></svg>
     </div></div>
     <div id="mob"></div>
+    <div class="defs" id="defs"></div>
   </div>
   <ul class="foot">
     <li>畫法：每個法人在每個產業（或每檔股票）的淨賣超畫在左邊，淨買超畫在右邊；法人自己的淨流出補成右下「離場／轉現金」，淨流入補成左下「場外資金進場」。這兩個灰色節點是補差額用的，只代表錢離開或進入「畫面上這一群」，不知道實際去了哪裡。</li>
@@ -112,6 +116,14 @@ document.addEventListener('click', e => { const b = e.target.closest && e.target
   if (b) { b.classList.toggle('open'); placePop(b); e.stopPropagation(); } }, true);
 
 const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b981'], do:['自營（自行）','#10b981'], dh:['自營（避險）','#8b939e'], m:['融資','#eab308']};
+const DEF = {
+  f:'外國投資機構（含陸資、外資券商自己的帳戶）在台股的買賣。',
+  t:'國內投信公司操作的基金（共同基金、ETF 等）的買賣。',
+  d:'證券商用公司自己的錢買賣，等於下面「自行」加「避險」兩類合計。',
+  do:'證券商依自己的判斷、用自己的錢主動買賣，賺股價漲跌，通常是短線操作。',
+  dh:'證券商發行權證、替 ETF 造市或處理申購買回後，為了抵銷自己的風險而被動買賣。照公式計算，不代表券商看好或看壞；權證的部分反映的多半是權證投資人（多為散戶）的部位。',
+  m:'投資人（多半是散戶）向券商借錢買股的融資餘額增減。餘額增加畫成買進，減少畫成賣出；這是餘額變化，和法人的買賣超性質不同。'
+};
 const PER = Object.keys(D.periods).map(Number).sort((a,b)=>a-b);
 const vw = () => { const w = document.documentElement.clientWidth; if (w) return w; try { return parent.document.documentElement.clientWidth || 1200; } catch (e) { return 1200; } };
 const NARROW = () => vw() < 700;   // the tab is hidden (width 0) when first drawn, so fall back to the page width
@@ -222,6 +234,9 @@ function draw() {
   if (Object.keys(plugIn).length) left.push({id:'Lplug', label:'場外資金進場', by:plugIn, v:sumBy({by:plugIn}), plug:true});
   if (Object.keys(plugOut).length) right.push({id:'Rplug', label:'離場／轉現金', by:plugOut, v:sumBy({by:plugOut}), plug:true});
   const mid = A.map(k => ({id:'M'+k, k, v:left.reduce((s, n) => s + (n.by[k] || 0), 0)}));
+  document.getElementById('defs').innerHTML = '<div class="h">「誰在搬」各角色是什麼</div>' +
+    A.map(k => `<div><i style="background:${ACT[k][1]}"></i><b>${ACT[k][0]}</b>：${DEF[k]}</div>`).join('') +
+    '<div><i style="background:#8b939e"></i><b>場外資金進場／離場・轉現金</b>：補差額用的灰色節點。某類買賣方整體淨買進，差額畫成左下「場外資金進場」；淨賣出畫成右下「離場／轉現金」。只代表錢進出畫面上這一群，不知道實際來源或去向。</div>';
   const moved = left.filter(n => !n.plug).reduce((s, n) => s + n.v, 0);
   document.getElementById('sub').textContent =
     `${A.map(k => ACT[k][0]).join('＋')} 在 ${ymd(P.start)} ～ ${ymd(P.end)} 期間共搬動 ${Math.round(yi(moved)).toLocaleString('zh-TW')} 億元（單邊計）· 線越粗＝金額越大 · ${NARROW() ? (S.mview === 'chart' ? '點色帶看金額、點名稱看細項' : '點名稱看細項') : '滑過看細節'}` +
@@ -248,9 +263,9 @@ function draw() {
   // layout
   const svg = document.getElementById('sk'), W = svg.clientWidth || 1200;
   const nMax = Math.max(left.length, right.length);
-  const H = 880;
+  const H = 960;
   svg.setAttribute('height', H + 26); svg.setAttribute('viewBox', `0 -26 ${W} ${H + 26}`);
-  const nw = 14, xL = W * 0.19, xM = W * 0.5 - nw / 2, xR = W * 0.80 - nw;
+  const nw = 14, xL = Math.min(W * 0.19, Math.max(185, W * 0.13)), xM = W * 0.5 - nw / 2, xR = W - xL - nw;
   const total = Math.max(left.reduce((s, n) => s + n.v, 0), 1);
   const stack = (nodes, pad) => {   // shrink the scale until tiny nodes (min 1px) still fit
     let k = (H - 20 - pad * (nodes.length - 1)) / total;
@@ -264,7 +279,7 @@ function draw() {
   const kL = Math.min(stack(left, padSide), stack(right, padSide));
   { let y = 10; for (const n of left) { if (n.plug) y += 14; n.h = Math.max(1, n.v * kL); n.y = y; y += n.h + padSide; } }
   // middle: same scale, larger gaps
-  { const sumM = mid.reduce((s, n) => s + n.v, 0); const gap = Math.max(18, (H - 20 - sumM * kL) / Math.max(1, mid.length - 1)); let y = 10;
+  { const sumM = mid.reduce((s, n) => s + n.v, 0); const gap = Math.max(28, (H - 20 - sumM * kL) / Math.max(1, mid.length - 1)); let y = 10;
     for (const n of mid) { n.h = Math.max(2, n.v * kL); n.y = y; y += n.h + Math.min(gap, 70); } }
   // rescale right to the same unit (right total == left total by construction)
   const kR = kL; { let y = 10; for (const n of right) { if (n.plug) y += 14; n.h = Math.max(1, n.v * kR); n.y = y; y += n.h + padSide; } }
@@ -288,19 +303,19 @@ function draw() {
     const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
     g += `<rect${ga} x="${xL}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#3b82f6'}"/>`;
     // labels stack downward (13 px apart) so the biggest nodes always get a label, even when nodes are thin and close together
-    const cyL = n.y + n.h / 2, yl = Math.max(cyL, lastL + 13);
-    if ((n.v >= 5e6 && yl <= H + 6 && yl - cyL < 120) || n.plug) { const y = n.plug ? Math.max(cyL, lastL + 13) : yl; lastL = y;
+    const cyL = n.y + n.h / 2, yl = Math.max(cyL, lastL + 17);
+    if ((n.v >= 5e6 && yl <= H + 6 && yl - cyL < 120) || n.plug) { const y = n.plug ? Math.max(cyL, lastL + 17) : yl; lastL = y;
       g += `<text${ga} x="${xL - 8}" y="${y + 4}" text-anchor="end">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
   }
   for (const n of right) {
     const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
     g += `<rect${ga} x="${xR}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#f0525a'}"/>`;
-    const cyR = n.y + n.h / 2, yr = Math.max(cyR, lastR + 13);
+    const cyR = n.y + n.h / 2, yr = Math.max(cyR, lastR + 17);
     if ((n.v >= 5e6 && yr <= H + 6 && yr - cyR < 120) || n.plug) { lastR = yr;
       g += `<text${ga} x="${xR + nw + 8}" y="${yr + 4}">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
   }
   for (const m of mid) {
-    g += `<rect x="${xM}" y="${m.y}" width="${nw}" height="${m.h}" rx="2" fill="${ACT[m.k][1]}"/>`;
+    g += `<rect x="${xM}" y="${m.y}" width="${nw}" height="${m.h}" rx="2" fill="${ACT[m.k][1]}" data-tip="${ACT[m.k][0]}：${DEF[m.k]}"/>`;
     const nv = yi(net[m.k]);
     g += `<text class="mid" x="${xM + nw / 2}" y="${m.y - 6}" text-anchor="middle">${ACT[m.k][0]} <tspan fill="${nv > 0 ? '#f0525a' : nv < 0 ? '#22b573' : '#9aa3ad'}">${f1(nv, true)} 億</tspan></text>`;
   }
