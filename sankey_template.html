@@ -37,6 +37,8 @@ svg .mid{font-weight:700;font-size:13px;paint-order:stroke;stroke:#1a1e24;stroke
 .legend{color:var(--mute);font-size:12px;margin-top:2px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px -1px 8px}
 #mob{display:none}
+#skwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.swipe{display:none;color:var(--mute);font-size:12px;margin:4px 0}
 #mob h3{font-size:14px;margin:14px 0 6px;color:var(--mute);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .chip{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px}
@@ -70,6 +72,7 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
     <span class="ctl"><span class="lab">自營</span><div class="seg" id="dmode"></div></span>
     <span class="ctl"><span class="lab">顯示</span><div class="seg" id="topn"></div></span>
     <span class="ctl"><span class="lab">流向圖排序</span><div class="seg" id="order"></div></span>
+    <span class="ctl" id="mviewCtl" style="display:none"><span class="lab">手機顯示</span><div class="seg" id="mview"></div></span>
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="note" id="note"></div>
@@ -79,8 +82,11 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
       <h2 id="title"></h2><button id="back" class="backbtn">← 回到總覽</button></div>
     <div class="note" id="sub" style="margin:0"></div>
     <div class="legend">色帶表示方向：<i style="background:#3b6fb6"></i>資金流出　<i style="background:#b8474b"></i>資金流入　<i style="background:#8b939e"></i>補差額。數字顏色照台股慣例：<span class="up">紅＝買超</span>、<span class="down">綠＝賣超</span>。</div>
+    <div class="swipe" id="swipe">← 左右滑動看完整流向圖 →</div>
+    <div id="skwrap"><div id="skinner">
     <div class="cols" id="cols"><div>資金被抽走</div><div>誰在搬</div><div>資金流進去</div></div>
     <svg id="sk" width="100%"></svg>
+    </div></div>
     <div id="mob"></div>
   </div>
   <ul class="foot">
@@ -109,7 +115,7 @@ const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b98
 const PER = Object.keys(D.periods).map(Number).sort((a,b)=>a-b);
 const vw = () => { const w = document.documentElement.clientWidth; if (w) return w; try { return parent.document.documentElement.clientWidth || 1200; } catch (e) { return 1200; } };
 const NARROW = () => vw() < 700;   // the tab is hidden (width 0) when first drawn, so fall back to the page width
-const S = {per:String(PER[PER.length-1]), view:'industry', group:null, who:'all', dmode:'split', topn: NARROW() ? '8' : '12', order:'amt'};
+const S = {per:String(PER[PER.length-1]), view:'industry', group:null, who:'all', dmode:'split', topn: NARROW() ? '8' : '12', order:'amt', mview:'list'};
 window.__flow = {get: () => S.per, set: p => { if (D.periods[p] && p !== S.per) { S.per = p; draw(); } }};
 const ymd = s => `${s.slice(0,4)}/${s.slice(4,6)}/${s.slice(6)}`;
 const yi = v => v / 1e8;
@@ -121,6 +127,7 @@ const segs = {
   dmode: [['merge','合併（自行＋避險）'],['split','拆開避險']],
   topn: [['8','前 8'],['12','前 12'],['all','全部']],
   order: [['amt','依金額'],['link','依連線']],
+  mview: [['list','清單'],['chart','流向圖']],
 };
 function seg(id) {
   document.getElementById(id).innerHTML = segs[id].map(([k, l]) => `<button data-k="${k}" class="${S[id]===k?'on':''}">${l}</button>`).join('');
@@ -217,13 +224,17 @@ function draw() {
   const mid = A.map(k => ({id:'M'+k, k, v:left.reduce((s, n) => s + (n.by[k] || 0), 0)}));
   const moved = left.filter(n => !n.plug).reduce((s, n) => s + n.v, 0);
   document.getElementById('sub').textContent =
-    `${A.map(k => ACT[k][0]).join('＋')} 在 ${ymd(P.start)} ～ ${ymd(P.end)} 期間共搬動 ${Math.round(yi(moved)).toLocaleString('zh-TW')} 億元（單邊計）· 線越粗＝金額越大 · ${NARROW() ? '點名稱看細項' : '滑過看細節'}` +
+    `${A.map(k => ACT[k][0]).join('＋')} 在 ${ymd(P.start)} ～ ${ymd(P.end)} 期間共搬動 ${Math.round(yi(moved)).toLocaleString('zh-TW')} 億元（單邊計）· 線越粗＝金額越大 · ${NARROW() ? (S.mview === 'chart' ? '點色帶看金額、點名稱看細項' : '點名稱看細項') : '滑過看細節'}` +
     (S.group ? ' · 同一檔可能左右都出現（不同法人方向相反）' : '');
 
   // phones: ranked lists instead of the diagram
   const svgEl = document.getElementById('sk'), mob = document.getElementById('mob');
-  if (NARROW()) {
-    svgEl.style.display = 'none'; document.getElementById('cols').style.display = 'none'; mob.style.display = 'block';
+  const narrow = NARROW();
+  document.getElementById('mviewCtl').style.display = narrow ? '' : 'none';
+  document.getElementById('swipe').style.display = narrow && S.mview === 'chart' ? 'block' : 'none';
+  document.getElementById('skinner').style.minWidth = narrow && S.mview === 'chart' ? '900px' : '';
+  if (narrow && S.mview === 'list') {
+    document.getElementById('skwrap').style.display = 'none'; mob.style.display = 'block';
     const sgn = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
     const chips = A.map(k => `<span class="chip">${ACT[k][0]} <b class="${sgn(net[k])}">${f1(yi(net[k]), true)} 億</b></span>`).join('');
     const list = (arr, col) => { const mx = Math.max(...arr.map(n => n.v), 1);
@@ -232,7 +243,7 @@ function draw() {
     mob.innerHTML = `<div class="chips">${chips}</div><h3>資金被抽走（億）</h3>${list(left, '#3b6fb6')}<h3>資金流進去（億）</h3>${list(right, '#b8474b')}`;
     return;
   }
-  svgEl.style.display = ''; document.getElementById('cols').style.display = ''; mob.style.display = 'none';
+  document.getElementById('skwrap').style.display = ''; mob.style.display = 'none';
 
   // layout
   const svg = document.getElementById('sk'), W = svg.clientWidth || 1200;
@@ -300,11 +311,14 @@ document.getElementById('sk').addEventListener('click', drill);
 document.getElementById('mob').addEventListener('click', drill);
 document.getElementById('mob').addEventListener('keydown', e => { if (e.key === 'Enter') drill(e); });
 const tip = document.getElementById('tip');
-document.getElementById('sk').addEventListener('mousemove', e => {
+const showTip = e => {
   const t = e.target.dataset && e.target.dataset.tip;
-  if (t) { tip.textContent = t; tip.style.display = 'block'; tip.style.left = e.clientX + 12 + 'px'; tip.style.top = e.clientY + 12 + 'px'; }
+  if (t) { tip.textContent = t; tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 12, document.documentElement.clientWidth - tip.offsetWidth - 8) + 'px'; tip.style.top = e.clientY + 12 + 'px'; }
   else tip.style.display = 'none';
-});
+};
+document.getElementById('sk').addEventListener('mousemove', showTip);
+document.getElementById('sk').addEventListener('click', showTip);   // phones: tap a band to see its amount
 document.getElementById('built').textContent = ` 資料日期 ${ymd(D.asof)}，產生時間 ${D.built_utc}。`;
 addEventListener('resize', () => draw());
 draw();
