@@ -175,7 +175,8 @@ def main():
             px = (o["val"] / o["vol"]) if o["vol"] else None
             if px is None: px = last_px.get(c) or o["close"]
             else: last_px[c] = px
-            amt = [None if (px is None or o[k] is None) else o[k] * px for k in ("f", "t", "do", "dh", "m")]
+            # zero net shares is NT$0 even on a day with no price; unknown only if shares are missing or nonzero without a price
+            amt = [None if o[k] is None else 0.0 if o[k] == 0 else None if px is None else o[k] * px for k in ("f", "t", "do", "dh", "m")]
             dd[c] = dict(amt=amt, val=o["val"] or 0.0)
         daily.append(dd)
 

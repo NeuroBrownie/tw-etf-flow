@@ -6,15 +6,17 @@
 <meta name="robots" content="noindex, nofollow">
 <title>台股 ETF 資金流向圖</title>
 <style>
-:root{--bg:#111418;--card:#1a1e24;--line:#2a3038;--text:#e6e8eb;--mute:#8b939e;--up:#f0525a;--down:#4c8dff;--accent:#4c8dff}
+:root{color-scheme:dark;--bg:#111418;--card:#1a1e24;--line:#2a3038;--text:#e6e8eb;--mute:#9aa3ad;--up:#f0525a;--down:#22b573;--accent:#2563eb}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
 .wrap{max-width:none;margin:0 auto;padding:10px 16px 30px}
-.bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:14px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:14px}
+.ctl{display:inline-flex;gap:8px;align-items:center;white-space:nowrap}
 .bar .lab{color:var(--mute);font-size:13px}
 .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{background:none;border:0;color:var(--mute);padding:7px 13px;font:inherit;cursor:pointer}
-.seg button.on{background:#2b323c;color:#fff;font-weight:600}
+.seg button.on{background:var(--accent);color:#fff;font-weight:600}
+.seg button:focus-visible,.backbtn:focus-visible,.mrow:focus-visible{outline:2px solid #8ab4ff;outline-offset:-2px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:6px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .kpi .l{color:var(--mute);font-size:12px}.kpi .v{font-size:21px;font-weight:700;margin-top:2px}
@@ -24,7 +26,18 @@ body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system
 .cols{display:grid;grid-template-columns:38% 24% 38%;color:var(--mute);font-size:13px;text-align:center;margin:14px 0 4px}
 svg text{fill:var(--text);font-size:12px}
 svg .v{fill:var(--mute)}
-svg .mid{font-weight:700;font-size:13px}
+svg .mid{font-weight:700;font-size:13px;paint-order:stroke;stroke:#1a1e24;stroke-width:4px;stroke-linejoin:round}
+.legend{color:var(--mute);font-size:12px;margin-top:2px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px -1px 8px}
+#mob{display:none}
+#mob h3{font-size:14px;margin:14px 0 6px;color:var(--mute);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12.5px}
+.mrow{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:6px 2px;border-bottom:1px solid var(--line)}
+.mrow .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .val{font-variant-numeric:tabular-nums;color:var(--mute)}
+.mrow .bar2{grid-column:1/3;height:6px;border-radius:3px}
+.mrow.grp{cursor:pointer}
 .lk{mix-blend-mode:screen}
 .lk:hover{opacity:.95!important}
 #tip{position:fixed;pointer-events:none;background:#000c;color:#fff;padding:6px 9px;border-radius:6px;font-size:12px;display:none;z-index:9}
@@ -38,12 +51,12 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
 <body>
 <div class="wrap">
   <div class="bar">
-    <span class="lab">期間</span><div class="seg" id="per"></div>
-    <span class="lab">視角</span><div class="seg" id="view"></div>
-    <span class="lab">誰在搬</span><div class="seg" id="who"></div>
-    <span class="lab">自營</span><div class="seg" id="dmode"></div>
-    <span class="lab">顯示</span><div class="seg" id="topn"></div>
-    <span class="lab">流向圖排序</span><div class="seg" id="order"></div>
+    <span class="ctl"><span class="lab">期間</span><div class="seg" id="per"></div></span>
+    <span class="ctl"><span class="lab">視角</span><div class="seg" id="view"></div></span>
+    <span class="ctl"><span class="lab">誰在搬</span><div class="seg" id="who"></div></span>
+    <span class="ctl"><span class="lab">自營</span><div class="seg" id="dmode"></div></span>
+    <span class="ctl"><span class="lab">顯示</span><div class="seg" id="topn"></div></span>
+    <span class="ctl"><span class="lab">流向圖排序</span><div class="seg" id="order"></div></span>
   </div>
   <div class="kpis" id="kpis"></div>
   <div class="note" id="note"></div>
@@ -51,13 +64,15 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <h2 id="title"></h2><button id="back" class="backbtn">← 回到總覽</button></div>
     <div class="note" id="sub" style="margin:0"></div>
-    <div class="cols"><div>資金被抽走</div><div>誰在搬</div><div>資金流進去</div></div>
+    <div class="legend">色帶表示方向：<i style="background:#3b6fb6"></i>資金流出　<i style="background:#b8474b"></i>資金流入　<i style="background:#8b939e"></i>補差額。數字顏色照台股慣例：<span class="up">紅＝買超</span>、<span class="down">綠＝賣超</span>。</div>
+    <div class="cols" id="cols"><div>資金被抽走</div><div>誰在搬</div><div>資金流進去</div></div>
     <svg id="sk" width="100%"></svg>
+    <div id="mob"></div>
   </div>
   <ul class="foot">
     <li>畫法：每個法人在每個產業（或每檔股票）的淨賣超畫在左邊，淨買超畫在右邊；法人自己的淨流出補成右下「離場／轉現金」，淨流入補成左下「場外資金進場」。這兩個灰色節點是補差額用的，只代表錢離開或進入「畫面上這一群」，不知道實際去了哪裡。</li>
     <li><b>全市場產業別</b>＝交易所的產業分類（上市＋上櫃，ETF 自成一類）；點一個產業可看成分股，「← 回到總覽」返回。<b>自編主題族群</b>＝自己編的主題清單（themes.json，可隨時修改），只包含有歸類的股票；一檔股票若屬於多個主題，會在每個主題各算一次，所以主題加總會大於實際金額。</li>
-    <li><b>自營「合併」</b>＝跟截圖一樣把自營商的自行買賣和避險加在一起；<b>「拆開」</b>＝把避險（造市、申購買回的對沖）獨立成灰色節點。ETF 的自營成交大多是避險，不代表看法。</li>
+    <li><b>自營「合併」</b>＝把自營商的自行買賣和避險加在一起；<b>「拆開」</b>＝把避險（造市、申購買回的對沖）獨立成灰色節點。ETF 的自營成交大多是避險，不代表看法。</li>
     <li><b>融資</b>＝融資餘額的增減（多半是散戶借錢買進），是餘額變化，和法人的買賣超性質不同，一起畫只是方便比較。金額＝股數 × 當天均價，是估算值（≈），單位億元。<b>依連線</b>排序＝把主要由同一類買賣方搬動的 ETF 排在一起，線比較不會交叉。</li>
     <li>同一檔 ETF 可能同時出現在左右兩邊：例如外資賣、投信買，兩個方向分開畫。</li>
     <li>資料來源：臺灣證券交易所、證券櫃檯買賣中心。<span id="built"></span> 只描述法人的買賣，不是投資建議。</li>
@@ -68,15 +83,18 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
 const D = /*DATA*/null;
 const ACT = {f:['外資','#3b82f6'], t:['投信','#f97316'], d:['自營','#10b981'], do:['自營（自行）','#10b981'], dh:['自營（避險）','#8b939e'], m:['融資','#eab308']};
 const PER = Object.keys(D.periods).map(Number).sort((a,b)=>a-b);
-const S = {per:String(PER[PER.length-1]), view:'industry', group:'ETF', who:'all', dmode:'split', topn:'all', order:'amt'};
-const ymd = s => `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6)}`;
+const vw = () => { const w = document.documentElement.clientWidth; if (w) return w; try { return parent.document.documentElement.clientWidth || 1200; } catch (e) { return 1200; } };
+const NARROW = () => vw() < 700;   // the tab is hidden (width 0) when first drawn, so fall back to the page width
+const S = {per:String(PER[PER.length-1]), view:'industry', group:null, who:'all', dmode:'split', topn: NARROW() ? '8' : '12', order:'amt'};
+window.__flow = {get: () => S.per, set: p => { if (D.periods[p] && p !== S.per) { S.per = p; draw(); } }};
+const ymd = s => `${s.slice(0,4)}/${s.slice(4,6)}/${s.slice(6)}`;
 const yi = v => v / 1e8;
 const f1 = (x, sign) => (sign && x > 0 ? '+' : '') + x.toLocaleString('zh-TW', {minimumFractionDigits:1, maximumFractionDigits:1});
 const segs = {
   per: PER.map(n => [String(n), n + ' 日']),
   view: [['industry','全市場產業別'],['theme','自編主題族群']],
   who: [['all','全部'],['f','外資'],['t','投信'],['d','自營'],['m','融資']],
-  dmode: [['merge','合併（同截圖）'],['split','拆開避險']],
+  dmode: [['merge','合併（自行＋避險）'],['split','拆開避險']],
   topn: [['8','前 8'],['12','前 12'],['all','全部']],
   order: [['amt','依金額'],['link','依連線']],
 };
@@ -84,8 +102,9 @@ function seg(id) {
   document.getElementById(id).innerHTML = segs[id].map(([k, l]) => `<button data-k="${k}" class="${S[id]===k?'on':''}">${l}</button>`).join('');
 }
 for (const id in segs) document.getElementById(id).onclick = e => { const k = e.target.dataset.k; if (!k) return;
-  if (id === 'view' && k !== S.view) S.group = null; S[id] = k; draw(); };
-document.getElementById('back').onclick = () => { S.group = null; draw(); };
+  if (id === 'view' && k !== S.view) S.group = null; S[id] = k; draw();
+  if (id === 'per') try { parent.__setPeriod && parent.__setPeriod(k); } catch (e) {} };
+document.getElementById('back').onclick = () => { S.group = null; draw(); try { parent.__fitFlow && parent.__fitFlow(); } catch (x) {} };
 
 function actors() {
   let a = S.dmode === 'merge' ? ['f','t','d','m'] : ['f','t','do','dh','m'];
@@ -118,12 +137,12 @@ function draw() {
   const P = D.periods[S.per], A = actors(), rows = items(P);
   const unit = S.group ? '檔' : (S.view === 'industry' ? '個產業' : '個主題');
   document.getElementById('back').style.display = S.group ? '' : 'none';
-  document.getElementById('title').textContent = S.group ? `${S.group} — 成分股資金流向`
+  document.getElementById('title').textContent = S.group ? (S.group === 'ETF' && S.view === 'industry' ? 'ETF — 個別 ETF 資金流向' : `${S.group} — 個股資金流向`)
     : (S.view === 'industry' ? '全市場 — 產業資金流向（點一個產業看成分股）' : '自編主題族群 — 資金流向（點一個主題看成分股）');
   // KPIs (all ETFs, independent of filters, like the screenshot's top row)
   const M = P.market;
-  const kp = [['交易日數', null, S.per + ' 日'], ['全市場成交值', null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
-              ['外資淨買賣', M.f], ['投信淨買賣', M.t], ['自營淨買賣', M.d], ['融資增減', M.m]];
+  const kp = [['交易日數', null, S.per + ' 日'], ['全市場 成交值', null, Math.round(yi(M.val)).toLocaleString('zh-TW') + ' 億'],
+              ['全市場 外資淨買賣', M.f], ['全市場 投信淨買賣', M.t], ['全市場 自營淨買賣', M.d], ['全市場 融資增減', M.m]];
   document.getElementById('kpis').innerHTML = kp.map(([l, v, s]) => {
     const txt = s !== undefined ? s : v === null ? '—' : (Math.abs(yi(v)) >= 10 ? f1(yi(v), true).replace(/\.\d$/, '') : f1(yi(v), true)) + ' 億';
     const cls = v === null || s !== undefined ? '' : v > 0 ? 'up' : 'down';
@@ -164,7 +183,22 @@ function draw() {
   const mid = A.map(k => ({id:'M'+k, k, v:left.reduce((s, n) => s + (n.by[k] || 0), 0)}));
   const moved = left.filter(n => !n.plug).reduce((s, n) => s + n.v, 0);
   document.getElementById('sub').textContent =
-    `${A.map(k => ACT[k][0]).join('＋')} 在 ${ymd(P.start)} ～ ${ymd(P.end)} 期間共搬動 ${Math.round(yi(moved)).toLocaleString('zh-TW')} 億元（單邊計）· 線越粗＝金額越大 · 滑過看細節`;
+    `${A.map(k => ACT[k][0]).join('＋')} 在 ${ymd(P.start)} ～ ${ymd(P.end)} 期間共搬動 ${Math.round(yi(moved)).toLocaleString('zh-TW')} 億元（單邊計）· 線越粗＝金額越大 · ${NARROW() ? '點名稱看細項' : '滑過看細節'}` +
+    (S.group ? ' · 同一檔可能左右都出現（不同法人方向相反）' : '');
+
+  // phones: ranked lists instead of the diagram
+  const svgEl = document.getElementById('sk'), mob = document.getElementById('mob');
+  if (NARROW()) {
+    svgEl.style.display = 'none'; document.getElementById('cols').style.display = 'none'; mob.style.display = 'block';
+    const sgn = v => v > 0 ? 'up' : v < 0 ? 'down' : '';
+    const chips = A.map(k => `<span class="chip">${ACT[k][0]} <b class="${sgn(net[k])}">${f1(yi(net[k]), true)} 億</b></span>`).join('');
+    const list = (arr, col) => { const mx = Math.max(...arr.map(n => n.v), 1);
+      return arr.map(n => `<div class="mrow${n.grp ? ' grp' : ''}"${n.grp ? ` data-grp="${n.grp}" tabindex="0"` : ''}><span class="nm">${n.label}</span><span class="val">${f1(yi(n.v))}</span>` +
+        `<span class="bar2" style="width:${Math.max(1, 100 * n.v / mx)}%;background:${n.plug || n.other ? '#8b939e' : col}"></span></div>`).join(''); };
+    mob.innerHTML = `<div class="chips">${chips}</div><h3>資金被抽走（億）</h3>${list(left, '#3b6fb6')}<h3>資金流進去（億）</h3>${list(right, '#b8474b')}`;
+    return;
+  }
+  svgEl.style.display = ''; document.getElementById('cols').style.display = ''; mob.style.display = 'none';
 
   // layout
   const svg = document.getElementById('sk'), W = svg.clientWidth || 1200;
@@ -176,19 +210,19 @@ function draw() {
   const stack = (nodes, pad) => {   // shrink the scale until tiny nodes (min 1px) still fit
     let k = (H - 20 - pad * (nodes.length - 1)) / total;
     for (let i = 0; i < 60; i++) {
-      let y = 10; for (const n of nodes) { n.h = Math.max(1, n.v * k); n.y = y; y += n.h + pad; }
+      let y = 10; for (const n of nodes) { if (n.plug) y += 14; n.h = Math.max(1, n.v * k); n.y = y; y += n.h + pad; }
       if (y - pad <= H - 10) break; k *= 0.97;
     }
     return k;
   };
   const padSide = Math.max(0.5, Math.min(6, 160 / nMax));
   const kL = Math.min(stack(left, padSide), stack(right, padSide));
-  { let y = 10; for (const n of left) { n.h = Math.max(1, n.v * kL); n.y = y; y += n.h + padSide; } }
+  { let y = 10; for (const n of left) { if (n.plug) y += 14; n.h = Math.max(1, n.v * kL); n.y = y; y += n.h + padSide; } }
   // middle: same scale, larger gaps
   { const sumM = mid.reduce((s, n) => s + n.v, 0); const gap = Math.max(18, (H - 20 - sumM * kL) / Math.max(1, mid.length - 1)); let y = 10;
     for (const n of mid) { n.h = Math.max(2, n.v * kL); n.y = y; y += n.h + Math.min(gap, 70); } }
   // rescale right to the same unit (right total == left total by construction)
-  const kR = kL; { let y = 10; for (const n of right) { n.h = Math.max(1, n.v * kR); n.y = y; y += n.h + padSide; } }
+  const kR = kL; { let y = 10; for (const n of right) { if (n.plug) y += 14; n.h = Math.max(1, n.v * kR); n.y = y; y += n.h + padSide; } }
 
   let g = '';
   const band = (x0, y0, x1, y1, h, col, op, tip) => {
@@ -208,23 +242,24 @@ function draw() {
   for (const n of left) {
     const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
     g += `<rect${ga} x="${xL}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#3b82f6'}"/>`;
-    const cyL = n.y + n.h / 2; if (cyL - lastL >= 13 || n.plug) { lastL = cyL; g += `<text${ga} x="${xL - 8}" y="${n.y + n.h / 2 + 4}" text-anchor="end">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
+    const cyL = n.y + n.h / 2; if ((cyL - lastL >= 13 && n.v >= 5e6) || n.plug) { lastL = cyL; g += `<text${ga} x="${xL - 8}" y="${n.y + n.h / 2 + 4}" text-anchor="end">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
   }
   for (const n of right) {
     const ga = n.grp ? ` class="grp" data-grp="${n.grp}"` : '';
     g += `<rect${ga} x="${xR}" y="${n.y}" width="${nw}" height="${n.h}" rx="2" fill="${n.plug || n.other ? '#8b939e' : '#f0525a'}"/>`;
-    const cyR = n.y + n.h / 2; if (cyR - lastR >= 13 || n.plug) { lastR = cyR; g += `<text${ga} x="${xR + nw + 8}" y="${n.y + n.h / 2 + 4}">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
+    const cyR = n.y + n.h / 2; if ((cyR - lastR >= 13 && n.v >= 5e6) || n.plug) { lastR = cyR; g += `<text${ga} x="${xR + nw + 8}" y="${n.y + n.h / 2 + 4}">${n.label} <tspan class="v">${f1(yi(n.v))}</tspan></text>`; }
   }
   for (const m of mid) {
     g += `<rect x="${xM}" y="${m.y}" width="${nw}" height="${m.h}" rx="2" fill="${ACT[m.k][1]}"/>`;
     const nv = yi(net[m.k]);
-    g += `<text class="mid" x="${xM + nw / 2}" y="${m.y - 6}" text-anchor="middle">${ACT[m.k][0]} <tspan fill="${nv > 0 ? '#f0525a' : '#4c8dff'}">${f1(nv, true)} 億</tspan></text>`;
+    g += `<text class="mid" x="${xM + nw / 2}" y="${m.y - 6}" text-anchor="middle">${ACT[m.k][0]} <tspan fill="${nv > 0 ? '#f0525a' : nv < 0 ? '#22b573' : '#9aa3ad'}">${f1(nv, true)} 億</tspan></text>`;
   }
   svg.innerHTML = g;
 }
-document.getElementById('sk').addEventListener('click', e => {
-  const el = e.target.closest('[data-grp]'); if (el) { S.group = el.dataset.grp; draw(); scrollTo(0, 0); }
-});
+const drill = e => { const el = e.target.closest('[data-grp]'); if (el) { S.group = el.dataset.grp; draw(); scrollTo(0, 0); try { parent.__fitFlow && parent.__fitFlow(); } catch (x) {} } };
+document.getElementById('sk').addEventListener('click', drill);
+document.getElementById('mob').addEventListener('click', drill);
+document.getElementById('mob').addEventListener('keydown', e => { if (e.key === 'Enter') drill(e); });
 const tip = document.getElementById('tip');
 document.getElementById('sk').addEventListener('mousemove', e => {
   const t = e.target.dataset && e.target.dataset.tip;

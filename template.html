@@ -6,17 +6,20 @@
 <meta name="robots" content="noindex, nofollow">
 <title>台股 ETF 法人進出表</title>
 <style>
-:root{--bg:#111418;--card:#1a1e24;--line:#2a3038;--text:#e6e8eb;--mute:#8b939e;--up:#f0525a;--down:#22b573;--hedge:#9aa3ad;--accent:#4c8dff}
-@media (prefers-color-scheme: light){:root{--bg:#f6f7f9;--card:#fff;--line:#e3e6ea;--text:#1d2329;--mute:#6b7480;--up:#d6303a;--down:#108a52;--hedge:#7b848e}}
+:root{color-scheme:dark;--bg:#111418;--card:#1a1e24;--line:#2a3038;--text:#e6e8eb;--mute:#9aa3ad;--up:#f0525a;--down:#22b573;--hedge:#9aa3ad;--accent:#2563eb}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
-.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 60px}
+.wrap{max-width:none;margin:0;padding:16px 16px 60px}
+header.top{background:var(--card);border-bottom:1px solid var(--line);padding:16px 16px 0}
+header.top .tabs{margin:12px 0 0}
+header.top .tabs button{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:0}
+button:focus-visible,tr.clickable:focus-visible td,th:focus-visible{outline:2px solid #8ab4ff;outline-offset:-2px}
 h1{font-size:22px;margin:0 0 4px}
 .sub{color:var(--mute);font-size:13px}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0}
 .seg{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
 .seg button{background:none;border:0;color:var(--mute);padding:7px 14px;font:inherit;cursor:pointer}
-.seg button.on{background:var(--accent);color:#fff}
+.seg button.on{background:var(--accent);color:#fff;font-weight:600}
 input[type=search]{background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:inherit;width:180px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0 18px}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
@@ -49,11 +52,11 @@ tr.sel td{background:rgba(76,141,255,.12)}
 </style>
 </head>
 <body>
-<div class="wrap" style="padding-bottom:0">
+<header class="top">
   <h1>台股 ETF 法人進出表</h1>
   <div class="sub" id="sub"></div>
   <div class="tabs" id="tabs"><button data-v="table" class="on">表格</button><button data-v="flow">流向圖</button></div>
-</div>
+</header>
 <div id="flowView"><iframe id="flowFrame" title="ETF 資金流向圖" srcdoc="<!--SANKEY-->"></iframe></div>
 <div class="wrap" id="tableView">
 
@@ -96,13 +99,13 @@ tr.sel td{background:rgba(76,141,255,.12)}
 const D = /*DATA*/null; window.__D = D;
 const fmt = (v, d) => {
   if (v === null || v === undefined || Number.isNaN(v)) return '<span class="na">—</span>';
-  const x = v / 1e8, a = Math.abs(x), dp = d ?? (a >= 100 ? 0 : a >= 10 ? 1 : 2);
-  if (a < 0.005) return '<span class="na">0</span>';
+  const x = v / 1e8, a = Math.abs(x), dp = d ?? 1;
+  if (a < 0.05) return '<span class="na">0.0</span>';
   const s = (x > 0 ? '+' : '') + x.toLocaleString('zh-TW', {minimumFractionDigits: dp, maximumFractionDigits: dp});
   return `<span class="${x > 0 ? 'up' : 'down'}">${s}</span>`;
 };
 const fmtH = v => fmt(v).replace(/class="(up|down)"/, 'class="hd"');
-const fmtVal = v => v ? (v / 1e8).toLocaleString('zh-TW', {maximumFractionDigits: v >= 1e10 ? 0 : 1}) : '<span class="na">—</span>';
+const fmtVal = v => v === null || v === undefined ? '<span class="na">—</span>' : (v / 1e8).toLocaleString('zh-TW', {minimumFractionDigits: 1, maximumFractionDigits: 1});
 const fmtUnits = v => {
   if (v === null || v === undefined) return '<span class="na">—</span>';
   const x = v / 1e4; if (Math.abs(x) < 0.5) return '<span class="na">0</span>';
@@ -114,7 +117,8 @@ const TYPE_ORDER = ['台股市值/主題','台股高股息','主動式','槓桿'
 const S = {p: String(PER[PER.length-1]), type: null, q: '', sort: 'val', asc: false, all: false};
 try { const p = new URLSearchParams(location.hash.slice(1)).get('p'); if (p && D.periods[p]) S.p = p; } catch (e) {}
 
-const net = r => r.f + r.t + r.do;
+const add = (...a) => a.some(v => v === null || v === undefined) ? null : a.reduce((p, c) => p + c, 0);
+const net = r => add(r.f, r.t, r.do);
 const sumK = (rows, k) => rows.some(r => r[k] === null || r[k] === undefined) ? null : rows.reduce((a, r) => a + r[k], 0);
 const units = (r) => (D.units_change[r.code] || {})[S.p] ?? null;
 
@@ -129,27 +133,27 @@ function renderKpis(rows) {
   const s = k => sumK(rows, k);
   const P = D.periods[S.p];
   document.getElementById('sub').innerHTML =
-    `資料期間 ${ymd(P.start)} ～ ${ymd(P.end)}（${S.p} 個交易日）· 上市＋上櫃全部 ETF · 金額單位：億元`;
-  const k = [['外資', s('f')], ['投信', s('t')], ['自營（自行）', s('do')], ['法人合計（不含避險）', s('f') + s('t') + s('do')]];
+    `資料期間 ${ymd(P.start)} ～ ${ymd(P.end)}（${S.p} 個交易日）· 上市＋上櫃 · 金額單位：億元（≈ 估算）`;
+  const k = [['ETF 外資', s('f')], ['ETF 投信', s('t')], ['ETF 自營（自行）', s('do')], ['ETF 法人合計（不含避險）', add(s('f'), s('t'), s('do'))]];
   document.getElementById('kpis').innerHTML = k.map(([l, v]) => `<div class="kpi"><div class="l">${l}</div><div class="v">${fmt(v, 1)}</div></div>`).join('') +
-    `<div class="kpi hedge"><div class="l">自營（避險）· 造市與對沖</div><div class="v">${fmtH(s('dh'))}</div></div>` +
-    `<div class="kpi"><div class="l">融資增減</div><div class="v">${fmt(s('m'), 1)}</div></div>`;
+    `<div class="kpi hedge"><div class="l">ETF 自營（避險）· 造市與對沖</div><div class="v">${fmtH(s('dh'))}</div></div>` +
+    `<div class="kpi"><div class="l">ETF 融資增減</div><div class="v">${fmt(s('m'), 1)}</div></div>`;
 }
 function renderTypes(rows) {
   const g = {};
   for (const r of rows) { const x = g[r.type] ||= {n:0,f:0,t:0,do:0,dh:0,m:0,val:0}; x.n++; for (const k of ['f','t','do','dh','m','val']) x[k] = (x[k] === null || r[k] === null) ? null : x[k] + r[k]; }
   const types = TYPE_ORDER.filter(t => g[t]).concat(Object.keys(g).filter(t => !TYPE_ORDER.includes(t)));
   const tot = {n:0,f:0,t:0,do:0,dh:0,m:0,val:0}; for (const t of types) for (const k in tot) tot[k] = (tot[k] === null || g[t][k] === null) ? null : tot[k] + g[t][k];
-  const tr = (name, x, cls) => `<tr class="${cls}" data-type="${cls.includes('clickable') ? name : ''}">
+  const tr = (name, x, cls) => `<tr class="${cls}" data-type="${cls.includes('clickable') ? name : ''}"${cls.includes('clickable') ? ' tabindex="0"' : ''}>
     <td class="l">${name}</td><td>${x.n}</td><td>${fmt(x.f)}</td><td>${fmt(x.t)}</td><td>${fmt(x.do)}</td>
-    <td><b>${fmt(x.f + x.t + x.do)}</b></td><td>${fmtH(x.dh)}</td><td>${fmt(x.m)}</td><td>${fmtVal(x.val)}</td></tr>`;
+    <td><b>${fmt(add(x.f, x.t, x.do))}</b></td><td>${fmtH(x.dh)}</td><td>${fmt(x.m)}</td><td>${fmtVal(x.val)}</td></tr>`;
   document.getElementById('types').innerHTML =
     `<tr><th class="l">類型</th><th>檔數</th><th>外資</th><th>投信</th><th>自營（自行）</th><th>法人合計</th><th>自營（避險）</th><th>融資</th><th>成交值</th></tr>` +
     types.map(t => tr(t, g[t], 'clickable' + (S.type === t ? ' sel' : ''))).join('') + tr('全部 ETF', tot, 'tot');
 }
 const COLS = [
   ['code','代號','l'],['name','名稱','l'],['type','類型','l'],
-  ['f','外資'],['t','投信'],['do','自營（自行）'],['net','法人合計'],['dh','自營（避險）'],['m','融資'],['units','單位變化（萬）'],['val','成交值']
+  ['f','外資'],['t','投信'],['do','自營（自行）'],['net','法人合計'],['dh','自營（避險）'],['m','融資'],['val','成交值'],['units','單位變化（萬）']
 ];
 function renderList(rows) {
   let R = rows;
@@ -162,10 +166,10 @@ function renderList(rows) {
   const shown = S.all ? R : R.slice(0, 50);
   document.getElementById('listTitle').textContent = `個別 ETF${S.type ? '：' + S.type : ''}（${R.length} 檔）`;
   document.getElementById('list').innerHTML = '<tr>' + COLS.map(([k, l, c]) =>
-      `<th data-k="${k}" class="${c||''} ${S.sort===k?'sorted'+(S.asc?' asc':''):''}">${l}</th>`).join('') + '</tr>' +
+      `<th data-k="${k}" tabindex="0" class="${c||''} ${S.sort===k?'sorted'+(S.asc?' asc':''):''}">${l}</th>`).join('') + '</tr>' +
     shown.map(r => `<tr><td class="l">${r.code}</td><td class="l name" title="${r.name}">${r.name}</td>
       <td class="l"><span class="tag">${r.type}</span></td><td>${fmt(r.f)}</td><td>${fmt(r.t)}</td><td>${fmt(r.do)}</td>
-      <td><b>${fmt(net(r))}</b></td><td>${fmtH(r.dh)}</td><td>${fmt(r.m)}</td><td>${fmtUnits(units(r))}</td><td>${fmtVal(r.val)}</td></tr>`).join('');
+      <td><b>${fmt(net(r))}</b></td><td>${fmtH(r.dh)}</td><td>${fmt(r.m)}</td><td>${fmtVal(r.val)}</td><td>${fmtUnits(units(r))}</td></tr>`).join('');
   const b = document.getElementById('moreBtn');
   b.style.display = R.length > 50 ? '' : 'none';
   b.textContent = S.all ? '只顯示前 50 檔' : `顯示全部 ${R.length} 檔`;
@@ -174,7 +178,10 @@ function render() {
   const rows = rowsNow();
   renderPeriods(); renderKpis(rows); renderTypes(rows); renderList(rows);
 }
-document.getElementById('periods').onclick = e => { const p = e.target.dataset.p; if (p) { S.p = p; try { const h = new URLSearchParams(location.hash.slice(1)); h.set('p', p); history.replaceState(null, '', '#' + h); } catch (e) {} render(); } };
+function setPeriod(p) { if (!D.periods[p] || p === S.p) return; S.p = p; try { const h = new URLSearchParams(location.hash.slice(1)); h.set('p', p); history.replaceState(null, '', '#' + h); } catch (e) {} render(); }
+window.__setPeriod = setPeriod;   // the 流向圖 tab calls this so both tabs show the same period
+document.getElementById('periods').onclick = e => { const p = e.target.dataset.p; if (p) setPeriod(p); };
+for (const id of ['types', 'list']) document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.target.click(); } });
 document.getElementById('types').onclick = e => { const tr = e.target.closest('tr'); if (tr && tr.dataset.type) { S.type = S.type === tr.dataset.type ? null : tr.dataset.type; S.all = false; render(); } };
 document.getElementById('list').onclick = e => { const k = e.target.dataset.k; if (k) { if (S.sort === k) S.asc = !S.asc; else { S.sort = k; S.asc = ['code','name','type'].includes(k); } render(); } };
 document.getElementById('q').oninput = e => { S.q = e.target.value.trim(); render(); };
@@ -182,13 +189,14 @@ document.getElementById('moreBtn').onclick = () => { S.all = !S.all; render(); }
 document.getElementById('built').textContent = ` 資料日期 ${ymd(D.asof)}，產生時間 ${D.built_utc}。`;
 render();
 const fr = document.getElementById('flowFrame');
-const fit = () => { try { fr.style.height = fr.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) {} };
+const fit = () => { try { fr.style.height = '200px'; fr.style.height = fr.contentDocument.documentElement.scrollHeight + 'px'; } catch (e) {} };
+window.__fitFlow = () => setTimeout(fit, 30);
 function show(v) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   document.getElementById('tableView').style.display = v === 'table' ? '' : 'none';
-  document.getElementById('sub').style.visibility = v === 'table' ? '' : 'hidden';
+  document.getElementById('sub').style.display = v === 'table' ? '' : 'none';
   document.getElementById('flowView').style.display = v === 'flow' ? 'block' : 'none';
-  if (v === 'flow') { try { fr.contentWindow.draw(); } catch (e) {} setTimeout(fit, 50); }
+  if (v === 'flow') { try { fr.contentWindow.__flow.set(S.p); fr.contentWindow.draw(); } catch (e) {} setTimeout(fit, 50); }
   try { const h = new URLSearchParams(location.hash.slice(1)); h.set('v', v); history.replaceState(null, '', '#' + h); } catch (e) {}
 }
 document.getElementById('tabs').onclick = e => { const v = e.target.dataset.v; if (v) show(v); };
