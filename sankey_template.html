@@ -35,7 +35,8 @@ svg text{fill:var(--text);font-size:14px}
 svg .v{fill:var(--mute)}
 svg .mid{font-weight:700;font-size:15px;paint-order:stroke;stroke:#1a1e24;stroke-width:4px;stroke-linejoin:round}
 .legend{color:var(--mute);font-size:13px;margin-top:2px}
-.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 18px;margin:10px 0 2px;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.55}
+details.defsBox{background:var(--bg);margin:12px 0 2px}
+.defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 18px;margin:8px 0 4px;font-size:13px;line-height:1.55}
 .defs b{font-weight:700}.defs i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 6px -1px 0}
 .defs .h{grid-column:1/-1;color:var(--mute);font-size:12.5px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin:0 4px -1px 8px}
@@ -91,7 +92,7 @@ svg .grp{cursor:pointer}svg .grp:hover{opacity:.8}
     <svg id="sk" width="100%"></svg>
     </div></div>
     <div id="mob"></div>
-    <div class="defs" id="defs"></div>
+    <details class="offi defsBox" id="defsBox"><summary>「誰在搬」各角色是什麼</summary><div class="defs" id="defs"></div></details>
   </div>
   <ul class="foot">
     <li>畫法：每個法人在每個產業（或每檔股票）的淨賣超畫在左邊，淨買超畫在右邊；法人自己的淨流出補成右下「離場／轉現金」，淨流入補成左下「場外資金進場」。這兩個灰色節點是補差額用的，只代表錢離開或進入「畫面上這一群」，不知道實際去了哪裡。</li>
@@ -234,7 +235,7 @@ function draw() {
   if (Object.keys(plugIn).length) left.push({id:'Lplug', label:'場外資金進場', by:plugIn, v:sumBy({by:plugIn}), plug:true});
   if (Object.keys(plugOut).length) right.push({id:'Rplug', label:'離場／轉現金', by:plugOut, v:sumBy({by:plugOut}), plug:true});
   const mid = A.map(k => ({id:'M'+k, k, v:left.reduce((s, n) => s + (n.by[k] || 0), 0)}));
-  document.getElementById('defs').innerHTML = '<div class="h">「誰在搬」各角色是什麼</div>' +
+  document.getElementById('defs').innerHTML =
     A.map(k => `<div><i style="background:${ACT[k][1]}"></i><b>${ACT[k][0]}</b>：${DEF[k]}</div>`).join('') +
     '<div><i style="background:#8b939e"></i><b>場外資金進場／離場・轉現金</b>：補差額用的灰色節點。某類買賣方整體淨買進，差額畫成左下「場外資金進場」；淨賣出畫成右下「離場／轉現金」。只代表錢進出畫面上這一群，不知道實際來源或去向。</div>';
   const moved = left.filter(n => !n.plug).reduce((s, n) => s + n.v, 0);
